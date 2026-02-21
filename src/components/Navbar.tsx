@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { TrendingUp, BarChart3, Wallet, Vote, Menu, X } from "lucide-react";
+import { BarChart3, Wallet, Vote, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -17,11 +17,8 @@ export const Navbar = () => {
   return (
     <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-            <TrendingUp className="h-4 w-4 text-primary" />
-          </div>
-          <span className="text-base font-bold tracking-tight text-foreground">
+        <Link to="/" className="flex items-center">
+          <span className="text-xl font-black tracking-tight text-foreground">
             Destaker
           </span>
         </Link>
