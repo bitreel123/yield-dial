@@ -47,9 +47,12 @@ export const HeroMarket = ({ market }: HeroMarketProps) => {
   // Animate trades appearing
   useEffect(() => {
     const interval = setInterval(() => {
-      if (tradeIndex.current < recentTrades.length) {
-        setVisibleTrades((prev) => [...prev, recentTrades[tradeIndex.current]]);
-        tradeIndex.current++;
+      const idx = tradeIndex.current;
+      if (idx < recentTrades.length) {
+        tradeIndex.current = idx + 1;
+        setVisibleTrades((prev) => [...prev, recentTrades[idx]]);
+      } else {
+        clearInterval(interval);
       }
     }, 600);
     return () => clearInterval(interval);
