@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { MarketCard } from "@/components/MarketCard";
-import { StatCard } from "@/components/StatCard";
+import { HeroMarket } from "@/components/HeroMarket";
 import { markets, categoryLabels } from "@/lib/mockData";
-import { Search, Filter } from "lucide-react";
+import { Search } from "lucide-react";
 
 const categories = ['all', 'eth-lsd', 'sol-lsd', 'restaking', 'defi-yield'] as const;
 
@@ -17,32 +17,13 @@ const Index = () => {
     return true;
   });
 
-  const totalVolume = markets.reduce((s, m) => s + m.volume24h, 0);
-  const totalLiquidity = markets.reduce((s, m) => s + m.totalLiquidity, 0);
+  // Pick the first trending market as the featured hero
+  const featuredMarket = markets.find((m) => m.trending) || markets[0];
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
-      {/* Hero */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
-      >
-        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-          Yield Prediction Markets
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Trade, hedge, and speculate on liquid staking yields.
-        </p>
-      </motion.div>
-
-      {/* Stats */}
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Total Volume" value={`$${(totalVolume / 1e6).toFixed(2)}M`} delay={0} />
-        <StatCard label="Total Liquidity" value={`$${(totalLiquidity / 1e6).toFixed(1)}M`} delay={0.05} />
-        <StatCard label="Active Markets" value={`${markets.length}`} delay={0.1} />
-        <StatCard label="Trending" value={`${markets.filter(m => m.trending).length}`} sub="Hot markets" delay={0.15} />
-      </div>
+      {/* Hero Featured Market */}
+      <HeroMarket market={featuredMarket} />
 
       {/* Filters */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
