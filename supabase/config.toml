@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.worldid-rp-context]
 verify_jwt = false
+
+[functions.cre-workflow-simulate]
+verify_jwt = false
