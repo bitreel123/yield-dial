@@ -2,44 +2,70 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { MarketCard } from "@/components/MarketCard";
 import { HeroMarket } from "@/components/HeroMarket";
-import { markets, categoryLabels } from "@/lib/mockData";
-import { Search } from "lucide-react";
-import { useYieldPools, getYieldForAsset } from "@/hooks/useYieldPools";
+import { categoryLabels } from "@/lib/mockData";
+import { Search, Zap } from "lucide-react";
+import { useRealMarkets } from "@/hooks/useRealMarkets";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const categories = ['all', 'eth-lsd', 'sol-lsd', 'restaking', 'defi-yield'] as const;
 
 const Index = () => {
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [search, setSearch] = useState('');
-  const { pools, isLoading } = useYieldPools();
+  const { markets, isLoading, poolCount } = useRealMarkets();
+  const [batchRunning, setBatchRunning] = useState(false);
 
-  // Enrich markets with real yield data
-  const enrichedMarkets = markets.map((m) => {
-    const realYield = getYieldForAsset(pools, m.asset);
-    return realYield !== null ? { ...m, currentYield: Math.round(realYield * 100) / 100 } : m;
-  });
-
-  const filtered = enrichedMarkets.filter((m) => {
+  const filtered = markets.filter((m) => {
     if (activeCategory !== 'all' && m.category !== activeCategory) return false;
     if (search && !m.asset.toLowerCase().includes(search.toLowerCase()) && !m.condition.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
-  // Pick the first trending market as the featured hero
-  const featuredMarket = enrichedMarkets.find((m) => m.trending) || enrichedMarkets[0];
+  const featuredMarket = markets.find((m) => m.trending) || markets[0];
+
+  const runBatchPrediction = async () => {
+    setBatchRunning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("batch-predict");
+      if (error) throw error;
+      toast.success(`AI predicted ${data.predicted} markets from live DeFiLlama data`);
+      if (data.errors?.length > 0) {
+        toast.warning(`${data.errors.length} markets had issues`);
+      }
+      // Reload to show updated predictions
+      window.location.reload();
+    } catch (err: any) {
+      toast.error("Batch prediction failed: " + (err?.message || "Unknown error"));
+    } finally {
+      setBatchRunning(false);
+    }
+  };
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
-      {/* Hero Featured Market */}
-      <HeroMarket market={featuredMarket} />
+      {featuredMarket && <HeroMarket market={featuredMarket} />}
 
       {/* Data source indicator */}
-      {pools.length > 0 && (
-        <div className="mb-3 flex items-center gap-2 text-[10px] text-muted-foreground">
-          <span className="h-1.5 w-1.5 rounded-full bg-chart-yes animate-pulse" />
-          Live yields from DeFiLlama · {pools.length} pools tracked
-        </div>
-      )}
+      <div className="mb-3 flex items-center justify-between">
+        {poolCount > 0 && (
+          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+            <span className="h-1.5 w-1.5 rounded-full bg-chart-yes animate-pulse" />
+            Live yields from DeFiLlama · {poolCount} pools tracked
+          </div>
+        )}
+        <Button
+          onClick={runBatchPrediction}
+          disabled={batchRunning}
+          size="sm"
+          variant="outline"
+          className="h-7 gap-1.5 text-[10px]"
+        >
+          <Zap className="h-3 w-3" />
+          {batchRunning ? "Running AI..." : "Run All Predictions"}
+        </Button>
+      </div>
 
       {/* Filters */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -77,7 +103,13 @@ const Index = () => {
         ))}
       </div>
 
-      {filtered.length === 0 && (
+      {isLoading && filtered.length === 0 && (
+        <div className="py-16 text-center text-sm text-muted-foreground">
+          Loading live market data...
+        </div>
+      )}
+
+      {!isLoading && filtered.length === 0 && (
         <div className="py-16 text-center text-sm text-muted-foreground">
           No markets found.
         </div>

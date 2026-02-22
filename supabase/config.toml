@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.predict-yield]
 verify_jwt = false
+
+[functions.verify-worldid]
+verify_jwt = false
+
+[functions.batch-predict]
+verify_jwt = false
