@@ -2,9 +2,10 @@ import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { markets } from "@/lib/mockData";
 import { StatCard } from "@/components/StatCard";
-import { ArrowLeft, Clock, ExternalLink, TrendingUp } from "lucide-react";
+import { ArrowLeft, Clock, TrendingUp, Shield, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const MarketDetail = () => {
   const { id } = useParams();
@@ -12,6 +13,7 @@ const MarketDetail = () => {
   const [tradeTab, setTradeTab] = useState<'buy' | 'sell'>('buy');
   const [side, setSide] = useState<'YES' | 'NO'>('YES');
   const [amount, setAmount] = useState('');
+  const { walletAddress, isVerified, setModalOpen } = useAuth();
 
   if (!market) {
     return (
@@ -26,6 +28,8 @@ const MarketDetail = () => {
   const noPercent = Math.round(market.noPrice * 100);
   const shares = amount ? (parseFloat(amount) / (side === 'YES' ? market.yesPrice : market.noPrice)).toFixed(1) : '0';
   const payout = amount ? (parseFloat(amount) / (side === 'YES' ? market.yesPrice : market.noPrice)).toFixed(2) : '0.00';
+
+  const canTrade = walletAddress && isVerified;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
@@ -50,7 +54,6 @@ const MarketDetail = () => {
               <span>Settles: {market.settlementDate}</span>
             </div>
 
-            {/* Probability display */}
             <div className="flex gap-3 mb-4">
               <div className="flex-1 rounded-lg bg-chart-yes/10 p-4 text-center border border-chart-yes/20">
                 <div className="text-xs text-chart-yes font-medium mb-1">YES</div>
@@ -68,7 +71,6 @@ const MarketDetail = () => {
               <div className="probability-fill-yes" style={{ width: `${yesPercent}%` }} />
             </div>
 
-            {/* Chart placeholder */}
             <div className="mt-6 rounded-lg bg-secondary/50 border border-border/50 p-8 flex items-center justify-center">
               <div className="text-center text-muted-foreground">
                 <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-30" />
@@ -77,7 +79,6 @@ const MarketDetail = () => {
             </div>
           </motion.div>
 
-          {/* Market Stats */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatCard label="24h Volume" value={`$${(market.volume24h / 1000).toFixed(0)}k`} />
             <StatCard label="Liquidity" value={`$${(market.totalLiquidity / 1000).toFixed(0)}k`} />
@@ -85,7 +86,6 @@ const MarketDetail = () => {
             <StatCard label="Threshold" value={`${market.threshold}%`} />
           </div>
 
-          {/* Market Info */}
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="glass-card p-5">
             <h3 className="text-sm font-semibold text-foreground mb-3">Market Details</h3>
             <div className="space-y-2 text-xs text-muted-foreground">
@@ -100,86 +100,120 @@ const MarketDetail = () => {
         {/* Trading Panel */}
         <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="space-y-4">
           <div className="glass-card p-4 glow-border">
-            <div className="flex rounded-md bg-secondary p-0.5 mb-4">
-              <button
-                onClick={() => setTradeTab('buy')}
-                className={`flex-1 rounded py-1.5 text-xs font-medium transition-colors ${tradeTab === 'buy' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
-              >
-                Buy
-              </button>
-              <button
-                onClick={() => setTradeTab('sell')}
-                className={`flex-1 rounded py-1.5 text-xs font-medium transition-colors ${tradeTab === 'sell' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
-              >
-                Sell
-              </button>
-            </div>
-
-            <div className="mb-4">
-              <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 block">Outcome</label>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setSide('YES')}
-                  className={`flex-1 rounded-md py-2 text-xs font-semibold transition-colors border ${
-                    side === 'YES' ? 'border-chart-yes bg-chart-yes/15 text-chart-yes' : 'border-border text-muted-foreground'
-                  }`}
-                >
-                  Yes ${yesPercent}
-                </button>
-                <button
-                  onClick={() => setSide('NO')}
-                  className={`flex-1 rounded-md py-2 text-xs font-semibold transition-colors border ${
-                    side === 'NO' ? 'border-chart-no bg-chart-no/15 text-chart-no' : 'border-border text-muted-foreground'
-                  }`}
-                >
-                  No ${noPercent}
-                </button>
+            {!walletAddress ? (
+              <div className="flex flex-col items-center gap-3 py-6">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                  <Wallet className="h-6 w-6 text-primary" />
+                </div>
+                <p className="text-sm font-medium text-foreground">Connect to Trade</p>
+                <p className="text-xs text-muted-foreground text-center">Connect your wallet and verify your identity to start trading.</p>
+                <Button className="w-full text-xs" size="sm" onClick={() => setModalOpen(true)}>
+                  Connect Wallet
+                </Button>
               </div>
-            </div>
-
-            <div className="mb-4">
-              <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 block">Amount (USDC)</label>
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
-                className="h-10 w-full rounded-md border border-border bg-secondary px-3 text-sm font-mono text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
-              />
-            </div>
-
-            <div className="mb-4 space-y-1.5 text-xs">
-              <div className="flex justify-between text-muted-foreground">
-                <span>Shares</span>
-                <span className="font-mono text-foreground">{shares}</span>
+            ) : !isVerified ? (
+              <div className="flex flex-col items-center gap-3 py-6">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-warning/10">
+                  <Shield className="h-6 w-6 text-warning" />
+                </div>
+                <p className="text-sm font-medium text-foreground">Verify to Trade</p>
+                <p className="text-xs text-muted-foreground text-center">Complete World ID verification to unlock trading.</p>
+                <Button className="w-full text-xs" size="sm" onClick={() => setModalOpen(true)}>
+                  Verify Identity
+                </Button>
               </div>
-              <div className="flex justify-between text-muted-foreground">
-                <span>Potential payout</span>
-                <span className="font-mono text-foreground">${payout}</span>
-              </div>
-              <div className="flex justify-between text-muted-foreground">
-                <span>Fee (1.5%)</span>
-                <span className="font-mono text-foreground">${amount ? (parseFloat(amount) * 0.015).toFixed(2) : '0.00'}</span>
-              </div>
-            </div>
+            ) : (
+              <>
+                <div className="flex rounded-md bg-secondary p-0.5 mb-4">
+                  <button
+                    onClick={() => setTradeTab('buy')}
+                    className={`flex-1 rounded py-1.5 text-xs font-medium transition-colors ${tradeTab === 'buy' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
+                  >
+                    Buy
+                  </button>
+                  <button
+                    onClick={() => setTradeTab('sell')}
+                    className={`flex-1 rounded py-1.5 text-xs font-medium transition-colors ${tradeTab === 'sell' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
+                  >
+                    Sell
+                  </button>
+                </div>
 
-            <Button className="w-full text-xs" size="sm">
-              {tradeTab === 'buy' ? 'Buy' : 'Sell'} {side} Shares
-            </Button>
+                <div className="mb-4">
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 block">Outcome</label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setSide('YES')}
+                      className={`flex-1 rounded-md py-2 text-xs font-semibold transition-colors border ${
+                        side === 'YES' ? 'border-chart-yes bg-chart-yes/15 text-chart-yes' : 'border-border text-muted-foreground'
+                      }`}
+                    >
+                      Yes ${yesPercent}
+                    </button>
+                    <button
+                      onClick={() => setSide('NO')}
+                      className={`flex-1 rounded-md py-2 text-xs font-semibold transition-colors border ${
+                        side === 'NO' ? 'border-chart-no bg-chart-no/15 text-chart-no' : 'border-border text-muted-foreground'
+                      }`}
+                    >
+                      No ${noPercent}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 block">Amount (USDC)</label>
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="h-10 w-full rounded-md border border-border bg-secondary px-3 text-sm font-mono text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                  />
+                </div>
+
+                <div className="mb-4 space-y-1.5 text-xs">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Shares</span>
+                    <span className="font-mono text-foreground">{shares}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Potential payout</span>
+                    <span className="font-mono text-foreground">${payout}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Fee (1.5%)</span>
+                    <span className="font-mono text-foreground">${amount ? (parseFloat(amount) * 0.015).toFixed(2) : '0.00'}</span>
+                  </div>
+                </div>
+
+                <Button className="w-full text-xs" size="sm">
+                  {tradeTab === 'buy' ? 'Buy' : 'Sell'} {side} Shares
+                </Button>
+              </>
+            )}
           </div>
 
           {/* LP Section */}
           <div className="glass-card p-4">
             <h3 className="text-sm font-semibold text-foreground mb-3">Provide Liquidity</h3>
             <p className="text-[10px] text-muted-foreground mb-3">Earn trading fees by providing USDC liquidity to this market.</p>
-            <input
-              type="number"
-              placeholder="USDC amount"
-              className="mb-3 h-9 w-full rounded-md border border-border bg-secondary px-3 text-xs font-mono text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none"
-            />
-            <Button variant="outline" className="w-full text-xs" size="sm">
-              Add Liquidity
-            </Button>
+            {canTrade ? (
+              <>
+                <input
+                  type="number"
+                  placeholder="USDC amount"
+                  className="mb-3 h-9 w-full rounded-md border border-border bg-secondary px-3 text-xs font-mono text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none"
+                />
+                <Button variant="outline" className="w-full text-xs" size="sm">
+                  Add Liquidity
+                </Button>
+              </>
+            ) : (
+              <Button variant="outline" className="w-full text-xs" size="sm" onClick={() => setModalOpen(true)}>
+                {!walletAddress ? "Connect Wallet" : "Verify to Add LP"}
+              </Button>
+            )}
           </div>
         </motion.div>
       </div>

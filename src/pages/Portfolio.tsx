@@ -1,9 +1,43 @@
 import { motion } from "framer-motion";
 import { positions, lpPositions } from "@/lib/mockData";
 import { StatCard } from "@/components/StatCard";
-import { ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Wallet, Shield } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
 
 const Portfolio = () => {
+  const { walletAddress, isVerified, setModalOpen } = useAuth();
+
+  if (!walletAddress) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-16">
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-4 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+            <Wallet className="h-8 w-8 text-primary" />
+          </div>
+          <h1 className="text-xl font-bold text-foreground">Connect Your Wallet</h1>
+          <p className="max-w-md text-sm text-muted-foreground">Connect your wallet and verify with World ID to view your portfolio, positions, and LP earnings.</p>
+          <Button onClick={() => setModalOpen(true)}>Connect Wallet</Button>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (!isVerified) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-16">
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-4 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-warning/10">
+            <Shield className="h-8 w-8 text-warning" />
+          </div>
+          <h1 className="text-xl font-bold text-foreground">Verify Your Identity</h1>
+          <p className="max-w-md text-sm text-muted-foreground">Complete World ID verification to access your portfolio and start trading.</p>
+          <Button onClick={() => setModalOpen(true)}>Verify with World ID</Button>
+        </motion.div>
+      </div>
+    );
+  }
+
   const totalDeposited = positions.reduce((s, p) => s + p.shares * p.avgPrice, 0) + lpPositions.reduce((s, l) => s + l.deposited, 0);
   const totalPnl = positions.reduce((s, p) => s + p.pnl, 0);
   const totalFees = lpPositions.reduce((s, l) => s + l.feesEarned, 0);
