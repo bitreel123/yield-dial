@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useState, useCallback } from "react";
 import type { IDKitResult } from "@worldcoin/idkit";
 
-const APP_ID = "app_staging_51f275ca481389a4e787582fa5db5e38" as const;
+const APP_ID = "app_135f61bfd908558b3c07fd6580d58192" as const;
 const ACTION = "destaker-verify";
 
 // Generate a demo rp_context for staging — in production this comes from your backend
