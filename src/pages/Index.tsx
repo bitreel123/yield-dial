@@ -4,26 +4,42 @@ import { MarketCard } from "@/components/MarketCard";
 import { HeroMarket } from "@/components/HeroMarket";
 import { markets, categoryLabels } from "@/lib/mockData";
 import { Search } from "lucide-react";
+import { useYieldPools, getYieldForAsset } from "@/hooks/useYieldPools";
 
 const categories = ['all', 'eth-lsd', 'sol-lsd', 'restaking', 'defi-yield'] as const;
 
 const Index = () => {
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [search, setSearch] = useState('');
+  const { pools, isLoading } = useYieldPools();
 
-  const filtered = markets.filter((m) => {
+  // Enrich markets with real yield data
+  const enrichedMarkets = markets.map((m) => {
+    const realYield = getYieldForAsset(pools, m.asset);
+    return realYield !== null ? { ...m, currentYield: Math.round(realYield * 100) / 100 } : m;
+  });
+
+  const filtered = enrichedMarkets.filter((m) => {
     if (activeCategory !== 'all' && m.category !== activeCategory) return false;
     if (search && !m.asset.toLowerCase().includes(search.toLowerCase()) && !m.condition.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
   // Pick the first trending market as the featured hero
-  const featuredMarket = markets.find((m) => m.trending) || markets[0];
+  const featuredMarket = enrichedMarkets.find((m) => m.trending) || enrichedMarkets[0];
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
       {/* Hero Featured Market */}
       <HeroMarket market={featuredMarket} />
+
+      {/* Data source indicator */}
+      {pools.length > 0 && (
+        <div className="mb-3 flex items-center gap-2 text-[10px] text-muted-foreground">
+          <span className="h-1.5 w-1.5 rounded-full bg-chart-yes animate-pulse" />
+          Live yields from DeFiLlama · {pools.length} pools tracked
+        </div>
+      )}
 
       {/* Filters */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

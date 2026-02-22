@@ -14,7 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      yield_pools: {
+        Row: {
+          apy: number | null
+          apy_base: number | null
+          apy_mean_30d: number | null
+          apy_reward: number | null
+          chain: string
+          created_at: string
+          exposure: string | null
+          id: string
+          il_risk: string | null
+          pool_id: string
+          pool_meta: string | null
+          project: string
+          stablecoin: boolean | null
+          symbol: string
+          tvl_usd: number | null
+          updated_at: string
+        }
+        Insert: {
+          apy?: number | null
+          apy_base?: number | null
+          apy_mean_30d?: number | null
+          apy_reward?: number | null
+          chain: string
+          created_at?: string
+          exposure?: string | null
+          id?: string
+          il_risk?: string | null
+          pool_id: string
+          pool_meta?: string | null
+          project: string
+          stablecoin?: boolean | null
+          symbol: string
+          tvl_usd?: number | null
+          updated_at?: string
+        }
+        Update: {
+          apy?: number | null
+          apy_base?: number | null
+          apy_mean_30d?: number | null
+          apy_reward?: number | null
+          chain?: string
+          created_at?: string
+          exposure?: string | null
+          id?: string
+          il_risk?: string | null
+          pool_id?: string
+          pool_meta?: string | null
+          project?: string
+          stablecoin?: boolean | null
+          symbol?: string
+          tvl_usd?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
