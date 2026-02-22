@@ -4,35 +4,64 @@ import { Button } from "@/components/ui/button";
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  IDKitRequestWidget,
+  orbLegacy,
+  type IDKitResult,
+  type IDKitErrorCodes,
+} from "@worldcoin/idkit";
 
-// For IDKit v4 — dynamically import to avoid SSR issues
-let IDKitModule: any = null;
-const getIDKit = async () => {
-  if (!IDKitModule) {
-    IDKitModule = await import("@worldcoin/idkit");
-  }
-  return IDKitModule;
-};
-
-const APP_ID = "app_135f61bfd908558b3c07fd6580d58192" as const;
+const APP_ID = "app_135f61bfd908558b3c07fd6580d58192" as `app_${string}`;
 const ACTION = "destaker-verify";
 
 export const WorldIDVerify = () => {
   const { isVerified, verificationLevel, setVerified } = useAuth();
   const [widgetOpen, setWidgetOpen] = useState(false);
   const [verifying, setVerifying] = useState(false);
-  const [idkitLoaded, setIdkitLoaded] = useState(false);
+  const [rpContext, setRpContext] = useState<any>(null);
 
-  // Cloud verification: send proof to our edge function which calls World ID API
-  const verifyProofOnCloud = useCallback(
-    async (result: any) => {
+  const openWidget = useCallback(async () => {
+    try {
+      // Get RP context from our backend
+      const { data, error } = await supabase.functions.invoke("worldid-rp-context");
+      if (error) throw error;
+      setRpContext(data.rp_context);
+      setWidgetOpen(true);
+    } catch (err: any) {
+      console.error("Failed to get RP context:", err);
+      toast.error("Failed to initialize World ID. Please try again.");
+    }
+  }, []);
+
+  const handleSuccess = useCallback(
+    async (result: IDKitResult) => {
+      setWidgetOpen(false);
       setVerifying(true);
       try {
-        const firstResponse = result.responses?.[0];
-        const proof = firstResponse?.proof || result.proof;
-        const merkle_root = firstResponse?.merkle_root || result.merkle_root;
-        const nullifier_hash = firstResponse?.nullifier_hash || result.nullifier_hash;
-        const verification_level = result.verification_level || "device";
+        // Handle both v3 and v4 response formats
+        const response = result.responses?.[0];
+        if (!response) throw new Error("No response in IDKit result");
+
+        let proof: string;
+        let merkle_root: string;
+        let nullifier_hash: string;
+        let verification_level = "device";
+
+        if ("merkle_root" in response) {
+          // V3 response
+          const v3 = response as any;
+          proof = v3.proof;
+          merkle_root = v3.merkle_root;
+          nullifier_hash = v3.nullifier;
+          verification_level = v3.identifier === "orb" ? "orb" : "device";
+        } else {
+          // V4 response
+          const v4 = response as any;
+          proof = Array.isArray(v4.proof) ? v4.proof[0] : v4.proof;
+          merkle_root = Array.isArray(v4.proof) ? v4.proof[4] : "";
+          nullifier_hash = v4.nullifier;
+          verification_level = v4.issuer_schema_id === 1 ? "orb" : "device";
+        }
 
         // Send to our backend for cloud verification
         const { data, error } = await supabase.functions.invoke("verify-worldid", {
@@ -59,9 +88,9 @@ export const WorldIDVerify = () => {
         }
       } catch (err: any) {
         console.error("Cloud verification error:", err);
-        // Fallback: accept the client-side proof
-        const firstResponse = result.responses?.[0];
-        const nullifier = firstResponse?.nullifier_hash || result.nullifier_hash || crypto.randomUUID();
+        // Fallback
+        const response = result.responses?.[0];
+        const nullifier = (response as any)?.nullifier || crypto.randomUUID();
         setVerified({
           level: "device",
           nullifierHash: nullifier,
@@ -74,15 +103,10 @@ export const WorldIDVerify = () => {
     [setVerified]
   );
 
-  const handleOpenWidget = useCallback(async () => {
-    try {
-      const idkit = await getIDKit();
-      setIdkitLoaded(true);
-      setWidgetOpen(true);
-    } catch (err) {
-      console.error("Failed to load IDKit:", err);
-      toast.error("Failed to load World ID widget");
-    }
+  const handleError = useCallback((errorCode: IDKitErrorCodes) => {
+    console.error("World ID error:", errorCode);
+    toast.error("World ID verification cancelled or failed");
+    setWidgetOpen(false);
   }, []);
 
   if (isVerified) {
@@ -102,7 +126,7 @@ export const WorldIDVerify = () => {
   return (
     <>
       <Button
-        onClick={handleOpenWidget}
+        onClick={openWidget}
         disabled={verifying}
         variant="outline"
         className="w-full gap-2 border-primary/30 bg-primary/5 text-foreground hover:bg-primary/10"
@@ -115,34 +139,19 @@ export const WorldIDVerify = () => {
         {verifying ? "Verifying..." : "Verify with World ID"}
       </Button>
 
-      {idkitLoaded && widgetOpen && (
-        <IDKitWidget
+      {rpContext && (
+        <IDKitRequestWidget
           app_id={APP_ID}
           action={ACTION}
-          onSuccess={verifyProofOnCloud}
+          rp_context={rpContext}
+          allow_legacy_proofs={true}
+          preset={orbLegacy()}
           open={widgetOpen}
           onOpenChange={setWidgetOpen}
+          onSuccess={handleSuccess}
+          onError={handleError}
         />
       )}
     </>
   );
-};
-
-// Lazy-loaded widget wrapper
-const IDKitWidget = (props: any) => {
-  const [Widget, setWidget] = useState<any>(null);
-
-  useState(() => {
-    getIDKit().then((mod) => {
-      if (mod.IDKitRequestWidget) {
-        setWidget(() => mod.IDKitRequestWidget);
-      } else if (mod.IDKitWidget) {
-        setWidget(() => mod.IDKitWidget);
-      }
-    });
-  });
-
-  if (!Widget) return null;
-
-  return <Widget {...props} />;
 };
