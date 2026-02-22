@@ -43,11 +43,11 @@ export const MarketCard = ({ market, index }: MarketCardProps) => {
         <div className="flex gap-2 mb-3">
           <button className="flex-1 rounded-md bg-chart-yes/10 py-2 text-center transition-colors group-hover:bg-chart-yes/20">
             <div className="text-xs font-medium text-chart-yes">Yes</div>
-            <div className="text-sm font-bold font-mono text-chart-yes">{yesPercent}¢</div>
+            <div className="text-sm font-bold font-mono text-chart-yes">${yesPercent}</div>
           </button>
           <button className="flex-1 rounded-md bg-chart-no/10 py-2 text-center transition-colors group-hover:bg-chart-no/20">
             <div className="text-xs font-medium text-chart-no">No</div>
-            <div className="text-sm font-bold font-mono text-chart-no">{noPercent}¢</div>
+            <div className="text-sm font-bold font-mono text-chart-no">${noPercent}</div>
           </button>
         </div>
 

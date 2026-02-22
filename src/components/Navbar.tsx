@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 const navItems = [
   { path: "/", label: "Markets", icon: BarChart3 },
   { path: "/portfolio", label: "Portfolio", icon: Wallet },
-  { path: "/staking", label: "Stake & Govern", icon: Vote },
 ];
 
 export const Navbar = () => {
