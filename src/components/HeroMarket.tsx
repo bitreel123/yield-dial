@@ -1,21 +1,32 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
-import { TrendingUp, Flame, ArrowUpRight } from "lucide-react";
+import { Flame, ArrowUpRight } from "lucide-react";
 import type { YieldMarket } from "@/lib/mockData";
 
 interface HeroMarketProps {
   market: YieldMarket;
 }
 
-// Generate mock price history
+// Generate more detailed price history with volatility
 const generatePriceHistory = () => {
-  const points: { time: string; yes: number; no: number }[] = [];
-  let yesPrice = 0.35;
-  const hours = ["6:00am", "9:30am", "12:00pm", "2:30pm", "5:00pm", "7:30pm", "10:00pm"];
-  hours.forEach((time) => {
-    yesPrice = Math.max(0.1, Math.min(0.9, yesPrice + (Math.random() - 0.48) * 0.08));
-    points.push({ time, yes: yesPrice, no: 1 - yesPrice });
+  const points: { time: string; yes: number; no: number; volume: number }[] = [];
+  let yesPrice = 0.32;
+  const times = [
+    "12:00am", "2:00am", "4:00am", "6:00am", "8:00am", "10:00am",
+    "12:00pm", "2:00pm", "4:00pm", "6:00pm", "8:00pm", "10:00pm",
+    "11:30pm",
+  ];
+  times.forEach((time) => {
+    const momentum = Math.random() > 0.45 ? 1 : -1;
+    const volatility = 0.03 + Math.random() * 0.06;
+    yesPrice = Math.max(0.12, Math.min(0.88, yesPrice + momentum * volatility));
+    points.push({
+      time,
+      yes: yesPrice,
+      no: 1 - yesPrice,
+      volume: Math.floor(5000 + Math.random() * 40000),
+    });
   });
   // End near current market price
   points[points.length - 1].yes = 0.42;
@@ -38,11 +49,27 @@ export const HeroMarket = ({ market }: HeroMarketProps) => {
   const [priceHistory] = useState(generatePriceHistory);
   const [visibleTrades, setVisibleTrades] = useState<typeof recentTrades>([]);
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
+  const [animatedPrice, setAnimatedPrice] = useState(0);
   const tradeIndex = useRef(0);
   const svgRef = useRef<SVGSVGElement>(null);
 
   const yesPercent = Math.round(market.yesPrice * 100);
   const noPercent = Math.round(market.noPrice * 100);
+
+  // Animate price counter
+  useEffect(() => {
+    let frame: number;
+    const duration = 1200;
+    const start = performance.now();
+    const animate = (now: number) => {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setAnimatedPrice(Math.round(eased * yesPercent));
+      if (progress < 1) frame = requestAnimationFrame(animate);
+    };
+    frame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frame);
+  }, [yesPercent]);
 
   // Animate trades appearing
   useEffect(() => {
@@ -59,19 +86,48 @@ export const HeroMarket = ({ market }: HeroMarketProps) => {
   }, []);
 
   // SVG chart dimensions
-  const chartW = 480;
-  const chartH = 160;
+  const chartW = 560;
+  const chartH = 200;
   const padX = 0;
-  const padY = 10;
+  const padY = 16;
 
-  const toX = (i: number) => padX + (i / (priceHistory.length - 1)) * (chartW - padX * 2);
-  const toY = (val: number) => padY + (1 - val) * (chartH - padY * 2);
+  const toX = useCallback(
+    (i: number) => padX + (i / (priceHistory.length - 1)) * (chartW - padX * 2),
+    [priceHistory.length]
+  );
+  const toY = useCallback(
+    (val: number) => padY + (1 - val) * (chartH - padY * 2),
+    []
+  );
 
-  const yesPath = priceHistory
-    .map((p, i) => `${i === 0 ? "M" : "L"} ${toX(i)} ${toY(p.yes)}`)
-    .join(" ");
+  // Smooth curve using cardinal spline
+  const buildSmoothPath = useCallback(() => {
+    const pts = priceHistory.map((p, i) => ({ x: toX(i), y: toY(p.yes) }));
+    if (pts.length < 2) return "";
+    let d = `M ${pts[0].x} ${pts[0].y}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[Math.max(0, i - 1)];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[Math.min(pts.length - 1, i + 2)];
+      const cp1x = p1.x + (p2.x - p0.x) / 6;
+      const cp1y = p1.y + (p2.y - p0.y) / 6;
+      const cp2x = p2.x - (p3.x - p1.x) / 6;
+      const cp2y = p2.y - (p3.y - p1.y) / 6;
+      d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+    }
+    return d;
+  }, [priceHistory, toX, toY]);
 
-  const areaPath = `${yesPath} L ${toX(priceHistory.length - 1)} ${chartH} L ${toX(0)} ${chartH} Z`;
+  const smoothPath = buildSmoothPath();
+  const lastPt = priceHistory[priceHistory.length - 1];
+  const areaPath = `${smoothPath} L ${toX(priceHistory.length - 1)} ${chartH} L ${toX(0)} ${chartH} Z`;
+
+  // Determine trend direction between consecutive points for coloring
+  const getTrendAtPoint = (i: number) => {
+    if (i === 0) return priceHistory[1].yes >= priceHistory[0].yes ? "up" : "down";
+    return priceHistory[i].yes >= priceHistory[i - 1].yes ? "up" : "down";
+  };
 
   return (
     <motion.div
@@ -87,8 +143,9 @@ export const HeroMarket = ({ market }: HeroMarketProps) => {
         {/* Top bar */}
         <div className="flex items-center justify-between border-b border-border/30 px-5 py-3">
           <div className="flex items-center gap-3">
+            <span className="text-lg">{market.assetIcon}</span>
             <h2 className="text-sm font-semibold text-foreground">
-              {market.condition}
+              {market.asset} Yield Prediction
             </h2>
             <Flame className="h-3.5 w-3.5 text-warning" />
           </div>
@@ -106,36 +163,50 @@ export const HeroMarket = ({ market }: HeroMarketProps) => {
         <div className="flex flex-col lg:flex-row">
           {/* Left: Market info */}
           <div className="flex-1 p-5">
-            {/* Options */}
-            <div className="mb-5 space-y-3">
-              <div className="flex items-center justify-between rounded-lg bg-secondary/50 px-4 py-3">
+            {/* Big animated price */}
+            <div className="mb-5">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
+                {market.condition}
+              </div>
+              <div className="flex items-baseline gap-3">
+                <span className="text-4xl font-black font-mono text-chart-yes">
+                  ${animatedPrice}
+                </span>
+                <span className="text-xs text-chart-yes font-medium">YES</span>
+                <span className="mx-2 text-muted-foreground/40">|</span>
+                <span className="text-2xl font-bold font-mono text-chart-no">
+                  ${noPercent}
+                </span>
+                <span className="text-xs text-chart-no font-medium">NO</span>
+              </div>
+            </div>
+
+            {/* Options rows */}
+            <div className="mb-5 space-y-2">
+              <div className="flex items-center justify-between rounded-lg bg-secondary/50 px-4 py-2.5">
                 <div className="flex items-center gap-3">
                   <span className="text-base">{market.assetIcon}</span>
-                  <span className="text-sm font-medium text-foreground">{market.asset}</span>
+                  <span className="text-xs font-medium text-foreground">{market.asset}</span>
                   <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
-                    {market.currentYield.toFixed(2)}%
+                    Current: {market.currentYield.toFixed(2)}%
                   </span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="rounded-md bg-chart-yes/15 px-3 py-1 text-xs font-bold font-mono text-chart-yes">
-                    {yesPercent}%
-                  </span>
-                </div>
+                <span className="rounded-md bg-chart-yes/15 px-3 py-1 text-xs font-bold font-mono text-chart-yes">
+                  ${yesPercent}
+                </span>
               </div>
 
-              <div className="flex items-center justify-between rounded-lg bg-secondary/50 px-4 py-3">
+              <div className="flex items-center justify-between rounded-lg bg-secondary/50 px-4 py-2.5">
                 <div className="flex items-center gap-3">
                   <span className="text-base">✕</span>
-                  <span className="text-sm font-medium text-foreground">Below Threshold</span>
+                  <span className="text-xs font-medium text-foreground">Below Threshold</span>
                   <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
                     &lt;{market.threshold}%
                   </span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="rounded-md bg-chart-no/15 px-3 py-1 text-xs font-bold font-mono text-chart-no">
-                    {noPercent}%
-                  </span>
-                </div>
+                <span className="rounded-md bg-chart-no/15 px-3 py-1 text-xs font-bold font-mono text-chart-no">
+                  ${noPercent}
+                </span>
               </div>
             </div>
 
@@ -144,14 +215,14 @@ export const HeroMarket = ({ market }: HeroMarketProps) => {
               ${(market.volume24h / 1000).toFixed(0)}k vol · {market.timeRemaining} remaining
             </div>
 
-            {/* News blurb */}
+            {/* Insight */}
             <div className="rounded-lg bg-secondary/30 p-3">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
                 Insight
               </span>
               <span className="text-[10px] text-muted-foreground ml-1">·</span>
               <span className="ml-1 text-[11px] leading-relaxed text-secondary-foreground">
-                {market.asset} staking yield currently sits at {market.currentYield}%, 
+                {market.asset} staking yield currently sits at {market.currentYield}%,
                 {market.currentYield >= market.threshold ? " above " : " below "}
                 the {market.threshold}% threshold. Market participants are pricing in a{" "}
                 {yesPercent}% probability of exceeding the target by settlement on{" "}
@@ -164,17 +235,16 @@ export const HeroMarket = ({ market }: HeroMarketProps) => {
             </div>
           </div>
 
-          {/* Right: Chart */}
+          {/* Right: Interactive Chart */}
           <div className="relative flex-1 border-t border-border/30 p-5 lg:border-l lg:border-t-0">
-            {/* Chart */}
             <svg
               ref={svgRef}
               viewBox={`0 0 ${chartW} ${chartH}`}
-              className="w-full"
+              className="w-full cursor-crosshair"
               onMouseLeave={() => setHoveredPoint(null)}
             >
               {/* Grid lines */}
-              {[0.25, 0.5, 0.75].map((v) => (
+              {[0.2, 0.4, 0.6, 0.8].map((v) => (
                 <line
                   key={v}
                   x1={0}
@@ -184,7 +254,7 @@ export const HeroMarket = ({ market }: HeroMarketProps) => {
                   stroke="hsl(var(--border))"
                   strokeWidth={0.5}
                   strokeDasharray="4 4"
-                  opacity={0.4}
+                  opacity={0.3}
                 />
               ))}
 
@@ -197,19 +267,32 @@ export const HeroMarket = ({ market }: HeroMarketProps) => {
                   textAnchor="end"
                   fill="hsl(var(--muted-foreground))"
                   fontSize={8}
-                  opacity={0.6}
+                  opacity={0.5}
                 >
-                  {Math.round(v * 100)}%
+                  ${Math.round(v * 100)}
                 </text>
               ))}
 
-              {/* Area fill */}
+              {/* Area gradient */}
               <defs>
                 <linearGradient id="heroAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(var(--chart-yes))" stopOpacity={0.2} />
+                  <stop offset="0%" stopColor="hsl(var(--chart-yes))" stopOpacity={0.15} />
                   <stop offset="100%" stopColor="hsl(var(--chart-yes))" stopOpacity={0} />
                 </linearGradient>
+                <linearGradient id="heroLineGrad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="hsl(var(--chart-yes))" stopOpacity={0.5} />
+                  <stop offset="100%" stopColor="hsl(var(--chart-yes))" />
+                </linearGradient>
+                {/* Glow filter */}
+                <filter id="glow">
+                  <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+                  <feMerge>
+                    <feMergeNode in="coloredBlur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
               </defs>
+
               <motion.path
                 d={areaPath}
                 fill="url(#heroAreaGrad)"
@@ -218,80 +301,119 @@ export const HeroMarket = ({ market }: HeroMarketProps) => {
                 transition={{ duration: 1, delay: 0.3 }}
               />
 
-              {/* Line */}
+              {/* Main line with glow */}
               <motion.path
-                d={yesPath}
+                d={smoothPath}
                 fill="none"
-                stroke="hsl(var(--chart-yes))"
-                strokeWidth={2}
+                stroke="url(#heroLineGrad)"
+                strokeWidth={2.5}
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                filter="url(#glow)"
                 initial={{ pathLength: 0 }}
                 animate={{ pathLength: 1 }}
-                transition={{ duration: 1.2, ease: "easeInOut" }}
+                transition={{ duration: 1.5, ease: "easeInOut" }}
               />
 
-              {/* Interactive hover points */}
-              {priceHistory.map((p, i) => (
-                <g key={i}>
-                  <rect
-                    x={toX(i) - 20}
-                    y={0}
-                    width={40}
-                    height={chartH}
-                    fill="transparent"
-                    onMouseEnter={() => setHoveredPoint(i)}
-                  />
-                  {hoveredPoint === i && (
-                    <>
-                      <line
-                        x1={toX(i)}
-                        y1={0}
-                        x2={toX(i)}
-                        y2={chartH}
-                        stroke="hsl(var(--muted-foreground))"
-                        strokeWidth={0.5}
-                        strokeDasharray="3 3"
-                        opacity={0.5}
-                      />
-                      <circle
-                        cx={toX(i)}
-                        cy={toY(p.yes)}
-                        r={4}
-                        fill="hsl(var(--chart-yes))"
-                        stroke="hsl(var(--background))"
-                        strokeWidth={2}
-                      />
-                    </>
-                  )}
-                </g>
-              ))}
+              {/* Up/down indicator dots at each data point */}
+              {priceHistory.map((p, i) => {
+                const trend = getTrendAtPoint(i);
+                return (
+                  <g key={i}>
+                    {/* Hover zone */}
+                    <rect
+                      x={toX(i) - (chartW / priceHistory.length) / 2}
+                      y={0}
+                      width={chartW / priceHistory.length}
+                      height={chartH}
+                      fill="transparent"
+                      onMouseEnter={() => setHoveredPoint(i)}
+                    />
 
-              {/* End point dot */}
+                    {/* Ambient dots showing trend */}
+                    <motion.circle
+                      cx={toX(i)}
+                      cy={toY(p.yes)}
+                      r={hoveredPoint === i ? 5 : 2.5}
+                      fill={trend === "up" ? "hsl(var(--chart-yes))" : "hsl(var(--chart-no))"}
+                      stroke={hoveredPoint === i ? "hsl(var(--background))" : "none"}
+                      strokeWidth={hoveredPoint === i ? 2 : 0}
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: 0.1 * i + 0.5 }}
+                    />
+
+                    {hoveredPoint === i && (
+                      <>
+                        {/* Vertical crosshair */}
+                        <line
+                          x1={toX(i)}
+                          y1={0}
+                          x2={toX(i)}
+                          y2={chartH}
+                          stroke="hsl(var(--muted-foreground))"
+                          strokeWidth={0.5}
+                          strokeDasharray="3 3"
+                          opacity={0.5}
+                        />
+                        {/* Horizontal crosshair */}
+                        <line
+                          x1={0}
+                          y1={toY(p.yes)}
+                          x2={chartW}
+                          y2={toY(p.yes)}
+                          stroke="hsl(var(--muted-foreground))"
+                          strokeWidth={0.5}
+                          strokeDasharray="3 3"
+                          opacity={0.3}
+                        />
+                        {/* Pulse ring */}
+                        <motion.circle
+                          cx={toX(i)}
+                          cy={toY(p.yes)}
+                          r={10}
+                          fill="none"
+                          stroke={trend === "up" ? "hsl(var(--chart-yes))" : "hsl(var(--chart-no))"}
+                          strokeWidth={1}
+                          initial={{ scale: 0.5, opacity: 0.8 }}
+                          animate={{ scale: 1.5, opacity: 0 }}
+                          transition={{ duration: 1, repeat: Infinity }}
+                        />
+                      </>
+                    )}
+                  </g>
+                );
+              })}
+
+              {/* Animated end pulse */}
               <motion.circle
                 cx={toX(priceHistory.length - 1)}
-                cy={toY(priceHistory[priceHistory.length - 1].yes)}
-                r={3.5}
-                fill="hsl(var(--chart-yes))"
+                cy={toY(lastPt.yes)}
+                r={6}
+                fill="none"
+                stroke="hsl(var(--chart-yes))"
+                strokeWidth={1.5}
                 initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 1.2 }}
+                animate={{ scale: [1, 1.8, 1], opacity: [1, 0, 1] }}
+                transition={{ delay: 1.5, duration: 2, repeat: Infinity }}
               />
 
               {/* X axis labels */}
-              {priceHistory.map((p, i) => (
-                <text
-                  key={i}
-                  x={toX(i)}
-                  y={chartH - 2}
-                  textAnchor="middle"
-                  fill="hsl(var(--muted-foreground))"
-                  fontSize={7}
-                  opacity={0.5}
-                >
-                  {p.time}
-                </text>
-              ))}
+              {priceHistory.map((p, i) =>
+                i % 2 === 0 ? (
+                  <text
+                    key={i}
+                    x={toX(i)}
+                    y={chartH - 2}
+                    textAnchor="middle"
+                    fill="hsl(var(--muted-foreground))"
+                    fontSize={7}
+                    opacity={0.4}
+                  >
+                    {p.time}
+                  </text>
+                ) : null
+              )}
             </svg>
 
             {/* Hover tooltip */}
@@ -301,14 +423,27 @@ export const HeroMarket = ({ market }: HeroMarketProps) => {
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
-                  className="absolute top-3 left-5 rounded-md bg-card border border-border/50 px-2.5 py-1.5 shadow-lg"
+                  className="absolute top-3 left-5 rounded-lg bg-card border border-border/50 px-3 py-2 shadow-lg"
                 >
-                  <div className="text-[10px] text-muted-foreground">{priceHistory[hoveredPoint].time}</div>
+                  <div className="text-[10px] text-muted-foreground mb-1">{priceHistory[hoveredPoint].time}</div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        getTrendAtPoint(hoveredPoint) === "up" ? "bg-chart-yes" : "bg-chart-no"
+                      }`}
+                    />
+                    <span className="text-[10px] text-muted-foreground">
+                      {getTrendAtPoint(hoveredPoint) === "up" ? "▲ Rising" : "▼ Falling"}
+                    </span>
+                  </div>
                   <div className="text-xs font-mono font-bold text-chart-yes">
-                    Yes {Math.round(priceHistory[hoveredPoint].yes * 100)}%
+                    Yes ${Math.round(priceHistory[hoveredPoint].yes * 100)}
                   </div>
                   <div className="text-xs font-mono font-bold text-chart-no">
-                    No {Math.round(priceHistory[hoveredPoint].no * 100)}%
+                    No ${Math.round(priceHistory[hoveredPoint].no * 100)}
+                  </div>
+                  <div className="text-[9px] font-mono text-muted-foreground mt-0.5">
+                    Vol: ${priceHistory[hoveredPoint].volume.toLocaleString()}
                   </div>
                 </motion.div>
               )}
@@ -322,7 +457,7 @@ export const HeroMarket = ({ market }: HeroMarketProps) => {
                 transition={{ delay: 1 }}
               >
                 <div className="text-[10px] text-chart-yes font-medium">{market.asset}</div>
-                <div className="text-lg font-bold font-mono text-chart-yes">{yesPercent}%</div>
+                <div className="text-lg font-bold font-mono text-chart-yes">${yesPercent}</div>
               </motion.div>
               <motion.div
                 initial={{ opacity: 0, x: 10 }}
@@ -331,7 +466,7 @@ export const HeroMarket = ({ market }: HeroMarketProps) => {
                 className="mt-1"
               >
                 <div className="text-[10px] text-chart-no font-medium">Below</div>
-                <div className="text-lg font-bold font-mono text-chart-no">{noPercent}%</div>
+                <div className="text-lg font-bold font-mono text-chart-no">${noPercent}</div>
               </motion.div>
             </div>
 

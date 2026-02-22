@@ -7,7 +7,7 @@ import { Navbar } from "@/components/Navbar";
 import Index from "./pages/Index";
 import MarketDetail from "./pages/MarketDetail";
 import Portfolio from "./pages/Portfolio";
-import Staking from "./pages/Staking";
+
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,7 +24,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/market/:id" element={<MarketDetail />} />
             <Route path="/portfolio" element={<Portfolio />} />
-            <Route path="/staking" element={<Staking />} />
+            
             <Route path="*" element={<NotFound />} />
           </Routes>
         </div>

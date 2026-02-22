@@ -54,12 +54,12 @@ const MarketDetail = () => {
             <div className="flex gap-3 mb-4">
               <div className="flex-1 rounded-lg bg-chart-yes/10 p-4 text-center border border-chart-yes/20">
                 <div className="text-xs text-chart-yes font-medium mb-1">YES</div>
-                <div className="text-2xl font-bold font-mono text-chart-yes">{yesPercent}¢</div>
+                <div className="text-2xl font-bold font-mono text-chart-yes">${yesPercent}</div>
                 <div className="text-[10px] text-muted-foreground mt-1">{yesPercent}% implied</div>
               </div>
               <div className="flex-1 rounded-lg bg-chart-no/10 p-4 text-center border border-chart-no/20">
                 <div className="text-xs text-chart-no font-medium mb-1">NO</div>
-                <div className="text-2xl font-bold font-mono text-chart-no">{noPercent}¢</div>
+                <div className="text-2xl font-bold font-mono text-chart-no">${noPercent}</div>
                 <div className="text-[10px] text-muted-foreground mt-1">{noPercent}% implied</div>
               </div>
             </div>
@@ -124,7 +124,7 @@ const MarketDetail = () => {
                     side === 'YES' ? 'border-chart-yes bg-chart-yes/15 text-chart-yes' : 'border-border text-muted-foreground'
                   }`}
                 >
-                  Yes {yesPercent}¢
+                  Yes ${yesPercent}
                 </button>
                 <button
                   onClick={() => setSide('NO')}
@@ -132,7 +132,7 @@ const MarketDetail = () => {
                     side === 'NO' ? 'border-chart-no bg-chart-no/15 text-chart-no' : 'border-border text-muted-foreground'
                   }`}
                 >
-                  No {noPercent}¢
+                  No ${noPercent}
                 </button>
               </div>
             </div>
