@@ -2,7 +2,9 @@
 
 > **Sybil-resistant prediction markets for DeFi yields, powered by World ID verification and real-time AI predictions.**
 
-![Destaker](https://img.shields.io/badge/Status-Live-brightgreen) ![World ID](https://img.shields.io/badge/World%20ID-Integrated-blue) ![AI](https://img.shields.io/badge/AI-Gemini%20Flash-purple) ![DeFiLlama](https://img.shields.io/badge/Data-DeFiLlama-orange)
+![Destaker](https://img.shields.io/badge/Status-Live-brightgreen) ![World ID](https://img.shields.io/badge/World%20ID-Integrated-blue) ![AI](https://img.shields.io/badge/AI-Gemini%20Flash-purple) ![DeFiLlama](https://img.shields.io/badge/Data-DeFiLlama-orange) ![CRE](https://img.shields.io/badge/CRE-Chainlink-375BD2)
+
+🔗 **Live App**: [yield-dial.lovable.app](https://yield-dial.lovable.app)
 
 ---
 
@@ -14,7 +16,8 @@ Destaker is a **decentralized prediction market platform** focused on DeFi yield
 - 🔮 **12 Live Markets** across ETH LSDs (stETH, rETH, cbETH, sfrxETH), SOL LSDs (mSOL, jitoSOL, bSOL), Restaking (EigenLayer), and DeFi Yield (Aave V3, Lido, Compound, Pendle PT)
 - 🤖 **AI-Powered Predictions** using Gemini AI analyzing real-time DeFiLlama data
 - 🌐 **World ID Verification** for Sybil-resistant trading (Cloud + On-Chain ready)
-- 📊 **Live Data** from 1,800+ DeFi pools via DeFiLlama API
+- ⚡ **CRE Workflow** — Chainlink Runtime Environment orchestration for market settlement
+- 📊 **Live Data** from 18,000+ DeFi pools via DeFiLlama API
 - 💹 **Dynamic YES/NO Pricing** driven by AI probability scores
 
 ---
@@ -45,102 +48,85 @@ Destaker solves these problems through:
 
 ### Architecture Overview
 
-```mermaid
-graph TD
-    subgraph Frontend [React Frontend]
-        A[User Interface] --> B[Market Cards]
-        A --> C[Trading Panel]
-        A --> D[AI Prediction Panel]
-        A --> E[World ID Widget]
-    end
-
-    subgraph Backend [Edge Functions]
-        F[fetch-yields] --> G[(yield_pools DB)]
-        H[predict-yield] --> I[(yield_predictions DB)]
-        J[batch-predict] --> I
-        K[verify-worldid] --> L[World ID Cloud API]
-        M[worldid-rp-context] --> E
-    end
-
-    subgraph External [External APIs]
-        N[DeFiLlama API] --> F
-        N --> H
-        O[Gemini AI] --> H
-        O --> J
-        P[World ID Developer Portal] --> K
-    end
-
-    B --> F
-    D --> H
-    C --> K
-    E --> M
-    E --> K
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        FRONTEND (React)                         │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────────┐   │
+│  │ Market   │ │ Trading  │ │ AI Panel │ │ World ID Widget  │   │
+│  │ Cards    │ │ Panel    │ │          │ │ (IDKit v4)       │   │
+│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────────┬─────────┘   │
+└───────┼─────────────┼───────────┼─────────────────┼─────────────┘
+        │             │           │                 │
+        ▼             ▼           ▼                 ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    BACKEND (Edge Functions)                      │
+│  ┌─────────────┐ ┌──────────────┐ ┌───────────────────────┐    │
+│  │ fetch-yields│ │ predict-yield│ │ verify-worldid        │    │
+│  │ 📊 Data    │ │ 🤖 AI       │ │ 🌐 World ID           │    │
+│  └──────┬──────┘ └──────┬───────┘ └───────────┬───────────┘    │
+│         │               │                     │                 │
+│  ┌──────┴──────┐ ┌──────┴───────┐ ┌───────────┴───────────┐    │
+│  │ batch-      │ │ cre-workflow │ │ worldid-rp-context    │    │
+│  │ predict     │ │ -simulate    │ │ 🌐 World ID           │    │
+│  │ 🤖 AI      │ │ ⚡ CRE       │ │                       │    │
+│  └─────────────┘ └──────────────┘ └───────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+        │               │                     │
+        ▼               ▼                     ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      EXTERNAL SERVICES                          │
+│  ┌─────────────┐ ┌──────────────┐ ┌───────────────────────┐    │
+│  │ DeFiLlama  │ │ Gemini AI    │ │ World ID Cloud API    │    │
+│  │ Yields API │ │ (2.5 Flash)  │ │ developer.worldcoin   │    │
+│  │ 18K+ pools │ │              │ │ .org                  │    │
+│  └─────────────┘ └──────────────┘ └───────────────────────┘    │
+│  ┌─────────────┐                                                │
+│  │ Ethereum    │                                                │
+│  │ RPC (Block  │                                                │
+│  │ Data)       │                                                │
+│  └─────────────┘                                                │
+└─────────────────────────────────────────────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      DATABASE (PostgreSQL)                       │
+│  ┌─────────────┐ ┌──────────────┐ ┌───────────────────────┐    │
+│  │yield_pools  │ │yield_        │ │ market_resolutions    │    │
+│  │1,859 pools  │ │predictions   │ │ Settlement outcomes   │    │
+│  │APY, TVL     │ │AI scores     │ │ CRE workflow results  │    │
+│  └─────────────┘ └──────────────┘ └───────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ### Frontend Architecture
 
-```mermaid
-graph LR
-    subgraph Pages
-        P1[Index - All Markets]
-        P2[MarketDetail - Trading]
-        P3[Portfolio]
-    end
-
-    subgraph Components
-        C1[Navbar + UserMenu]
-        C2[MarketCard]
-        C3[HeroMarket]
-        C4[AIPredictionPanel]
-        C5[WorldIDVerify]
-        C6[ConnectWalletModal]
-    end
-
-    subgraph Hooks
-        H1[useRealMarkets]
-        H2[useYieldPools]
-        H3[usePredictions]
-    end
-
-    subgraph Context
-        X1[AuthContext - Wallet + Verification State]
-    end
-
-    P1 --> C2
-    P1 --> C3
-    P2 --> C4
-    P2 --> C5
-    C1 --> C6
-    C6 --> C5
-    H1 --> H2
-    H1 --> H3
-    C2 --> H1
-    C4 --> H3
-    C5 --> X1
 ```
-
-### Backend Architecture
-
-```mermaid
-graph TB
-    subgraph Edge Functions
-        EF1[fetch-yields<br/>Fetches 18K+ pools from DeFiLlama<br/>Filters to 1,859 relevant pools<br/>Upserts to yield_pools table]
-        EF2[predict-yield<br/>Fetches live APY data<br/>Calls Gemini AI for prediction<br/>Stores in yield_predictions]
-        EF3[batch-predict<br/>Runs predictions for all 12 markets<br/>Parallel DeFiLlama + AI calls]
-        EF4[verify-worldid<br/>Receives proof from IDKit widget<br/>Calls World ID Cloud API<br/>Returns verification status]
-        EF5[worldid-rp-context<br/>Generates RP context for IDKit v4<br/>HMAC-SHA256 signed nonce]
-    end
-
-    subgraph Database
-        DB1[(yield_pools<br/>1,859 pools<br/>APY, TVL, chain, project)]
-        DB2[(yield_predictions<br/>AI predictions per market<br/>confidence, reasoning, direction)]
-        DB3[(market_resolutions<br/>Settlement outcomes<br/>final APY, resolution source)]
-    end
-
-    EF1 --> DB1
-    EF2 --> DB2
-    EF3 --> DB2
-    EF4 -.-> DB3
+┌──────────────────────────────────────────────────────┐
+│                      PAGES                            │
+│  Index (Markets) ──► MarketDetail (Trading)           │
+│  Portfolio ──► CREWorkflow (Dashboard)                │
+└──────────┬───────────────────────────────────────────┘
+           │
+           ▼
+┌──────────────────────────────────────────────────────┐
+│                    COMPONENTS                         │
+│  Navbar + UserMenu ──► ConnectWalletModal             │
+│  MarketCard ──► HeroMarket                            │
+│  AIPredictionPanel ──► WorldIDVerify                  │
+│  StatCard ──► NavLink                                 │
+└──────────┬───────────────────────────────────────────┘
+           │
+           ▼
+┌──────────────────────────────────────────────────────┐
+│                      HOOKS                            │
+│  useRealMarkets ──► useYieldPools + usePredictions    │
+└──────────┬───────────────────────────────────────────┘
+           │
+           ▼
+┌──────────────────────────────────────────────────────┐
+│                     CONTEXT                           │
+│  AuthContext — Wallet + World ID Verification State   │
+└──────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -151,38 +137,33 @@ graph TB
 
 World ID provides **Sybil-resistant identity verification** ensuring each trader is a unique human. Destaker implements both **Cloud (Off-Chain)** and is **On-Chain ready**.
 
-### How It Works
+### Verification Flow
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant FE as Frontend (IDKit v4)
-    participant RP as RP Context Function
-    participant WA as World App
-    participant VF as Verify Function
-    participant WC as World ID Cloud API
-
-    U->>FE: Click "Verify with World ID"
-    FE->>RP: Request RP context
-    RP-->>FE: {rp_id, nonce, signature, expires_at}
-    FE->>WA: Open IDKit widget (QR code)
-    WA-->>FE: Proof {merkle_root, nullifier_hash, proof}
-    FE->>VF: Send proof for verification
-    VF->>WC: POST /api/v2/verify/{app_id}
-    WC-->>VF: {success: true}
-    VF-->>FE: {verified: true, verification_level}
-    FE->>U: ✅ Verified Human badge
+```
+User ──► Frontend (IDKit v4) ──► RP Context Function
+                                       │
+                                       ▼
+                                 World App (QR)
+                                       │
+                                       ▼
+                                 Proof Generated
+                                       │
+                                       ▼
+                              Verify Function ──► World ID Cloud API
+                                       │              POST /api/v2/verify
+                                       ▼
+                              ✅ Verified Human Badge
 ```
 
-### World ID Code Files
+### 🌐 World ID Code Files
 
-| File | Purpose | World ID Function |
-|------|---------|-------------------|
-| `src/components/WorldIDVerify.tsx` | 🌐 **World ID** — IDKit v4 React widget integration | Renders verification button, handles proof callback, sends to cloud verification |
-| `supabase/functions/verify-worldid/index.ts` | 🌐 **World ID** — Cloud proof verification | Receives proof → calls World ID API → returns verification status |
-| `supabase/functions/worldid-rp-context/index.ts` | 🌐 **World ID** — RP context generation | Generates signed nonce + timestamps for IDKit v4 widget |
-| `src/contexts/AuthContext.tsx` | 🌐 **World ID** — Auth state management | Stores wallet + verification state (level, nullifier hash) |
-| `src/components/ConnectWalletModal.tsx` | 🌐 **World ID** — Verification modal | Two-step flow: Connect Wallet → Verify with World ID |
+| File | Purpose | Function |
+|------|---------|----------|
+| `src/components/WorldIDVerify.tsx` | 🌐 **World ID** — IDKit v4 React widget | Renders verification button, handles proof callback |
+| `supabase/functions/verify-worldid/index.ts` | 🌐 **World ID** — Cloud proof verification | Receives proof → calls World ID API → returns status |
+| `supabase/functions/worldid-rp-context/index.ts` | 🌐 **World ID** — RP context generation | Generates HMAC-SHA256 signed nonce for IDKit v4 |
+| `src/contexts/AuthContext.tsx` | 🌐 **World ID** — Auth state management | Stores wallet + verification state |
+| `src/components/ConnectWalletModal.tsx` | 🌐 **World ID** — Verification modal | Two-step: Connect Wallet → Verify with World ID |
 
 ### Verification Levels
 - **Device** — Lower friction, device-based verification
@@ -206,7 +187,7 @@ sequenceDiagram
 3. **AI Reasoning**: Gemini 2.5 Flash Lite analyzes yield trends, market conditions
 4. **Output**: Structured prediction with confidence score, probability, reasoning, risk factors
 
-### AI Code Files
+### 🤖 AI Code Files
 
 | File | Purpose | Technology |
 |------|---------|-----------|
@@ -214,6 +195,127 @@ sequenceDiagram
 | `supabase/functions/batch-predict/index.ts` | 🤖 **AI** — Batch prediction for all markets | Parallel Gemini AI calls |
 | `src/components/AIPredictionPanel.tsx` | 🤖 **AI** — Prediction display component | Shows confidence, reasoning, risk factors |
 | `src/hooks/usePredictions.ts` | 🤖 **AI** — Prediction data hooks | Fetches/triggers predictions |
+
+---
+
+## ⚡ CRE Workflow — Live Implementation
+
+### Overview
+
+Destaker includes a **fully functional CRE Workflow** (Chainlink Runtime Environment) that serves as an orchestration layer for yield prediction market settlement. The workflow integrates:
+
+1. **Blockchain** — Ethereum Mainnet (reads block number, chain ID via JSON-RPC)
+2. **External API** — DeFiLlama (fetches 18,000+ DeFi yield pools)
+3. **AI Agent** — Gemini 2.5 Flash Lite (determines settlement outcomes)
+4. **Data Write** — Stores settlement reports (simulating on-chain `SimpleMarket.settleMarket()`)
+
+### CRE Workflow Architecture
+
+```
+Step 1          Step 2              Step 3              Step 4           Step 5
+┌──────────┐   ┌──────────────┐   ┌──────────────┐   ┌────────────┐   ┌────────────┐
+│ ⏰ Cron  │──►│ 🔗 Blockchain│──►│ 🌐 DeFiLlama│──►│ 🤖 Gemini  │──►│ 💾 Database│
+│ Trigger  │   │ Read (ETH)   │   │ API (18K+   │   │ AI Agent   │   │ Write      │
+│ Every    │   │ Block Number │   │ pools)      │   │ Settlement │   │ Results    │
+│ 30min    │   │ Chain ID     │   │ Live APY    │   │ Outcome    │   │ Stored     │
+└──────────┘   └──────────────┘   └──────────────┘   └────────────┘   └────────────┘
+    0ms            ~400ms              ~700ms             ~100ms          ~800ms
+```
+
+### ⚡ CRE Workflow Code Files
+
+| File | Label | Purpose |
+|------|-------|---------|
+| `cre-workflow/project.yaml` | ⚡ **CRE** | CRE project configuration (RPCs, targets) |
+| `cre-workflow/destaker-settlement/workflow.yaml` | ⚡ **CRE** | Workflow-specific config |
+| `cre-workflow/destaker-settlement/main.ts` | ⚡ **CRE** | Main workflow entry point (CRE SDK pattern) |
+| `cre-workflow/destaker-settlement/defillama.ts` | ⚡ **CRE** | DeFiLlama API integration module |
+| `cre-workflow/destaker-settlement/gemini.ts` | ⚡ **CRE** | Gemini AI settlement logic |
+| `cre-workflow/destaker-settlement/types.ts` | ⚡ **CRE** | Shared type definitions |
+| `cre-workflow/destaker-settlement/config.staging.json` | ⚡ **CRE** | Staging config (12 markets) |
+| `supabase/functions/cre-workflow-simulate/index.ts` | ⚡ **CRE** | Live simulation edge function |
+| `src/pages/CREWorkflow.tsx` | ⚡ **CRE** | Frontend dashboard for running workflow |
+
+### How to Run
+
+**Option 1: CRE CLI (Local Simulation)**
+```bash
+npm install -g @chainlink/cre-cli
+cre workflow simulate destaker-settlement --target staging-settings
+```
+
+**Option 2: Live Edge Function (Deployed)**
+```bash
+curl -X POST https://pgereiuwcgumeacibpee.supabase.co/functions/v1/cre-workflow-simulate
+```
+
+**Option 3: Frontend Dashboard**
+Navigate to `/cre-workflow` in the app and click "Run CRE Workflow Simulation"
+
+### ✅ Live CRE Execution Evidence
+
+**Workflow completed successfully with 5 steps:**
+
+```json
+{
+  "execution": {
+    "timestamp": "2026-02-22T14:12:03.672Z",
+    "total_duration_ms": 1457,
+    "status": "success",
+    "steps_completed": 5
+  },
+  "blockchain": {
+    "chain": "ethereum-mainnet",
+    "chain_id": "1",
+    "block_number": 24512926,
+    "rpc": "https://ethereum-rpc.publicnode.com"
+  },
+  "external_api": {
+    "source": "DeFiLlama",
+    "total_pools": 18063,
+    "url": "https://yields.llama.fi/pools"
+  },
+  "ai_agent": {
+    "model": "google/gemini-2.5-flash-lite",
+    "markets_settled": 3
+  }
+}
+```
+
+**Step-by-step execution:**
+
+| Step | Name | Type | Duration | Status | Key Data |
+|------|------|------|----------|--------|----------|
+| 1 | Cron Trigger | trigger | 0ms | ✅ | Schedule: `0 */30 * * * *` |
+| 2 | Blockchain Read | blockchain_read | 366ms | ✅ | ETH Block #24,512,929, Chain ID: 1 |
+| 3 | External API (DeFiLlama) | external_api | 738ms | ✅ | 18,063 pools, 3 markets matched |
+| 4 | AI Agent (Gemini) | ai_agent | 92ms | ✅ | 3 markets settled with AI |
+| 5 | Data Write | data_write | 797ms | ✅ | 3 records stored |
+
+**Real yield data fetched from DeFiLlama:**
+
+| Asset | Current APY | 30d Mean | TVL | Project | Chain |
+|-------|-------------|----------|-----|---------|-------|
+| stETH | 2.3020% | 2.4636% | $18.68B | Lido | Ethereum |
+| mSOL | 6.7108% | 6.1387% | $0.25B | Marinade | Solana |
+| Aave V3 | 0.0001% | 0.0001% | $4.58B | Aave V3 | Ethereum |
+
+**AI Settlement Results:**
+
+| Asset | APY | Threshold | Outcome | Confidence |
+|-------|-----|-----------|---------|------------|
+| stETH | 2.302% | 3.5% | **NO** | 90% |
+| mSOL | 6.7108% | 7.0% | **NO** | 90% |
+| Aave V3 | 0.0001% | 5.0% | **NO** | 90% |
+
+**Database records created:**
+```sql
+SELECT market_id, asset, final_apy, resolution_source, resolution_data->>'outcome' 
+FROM market_resolutions;
+-- 001 | stETH   | 2.302  | CRE Workflow (Gemini AI + DeFiLlama) | NO
+-- 004 | mSOL    | 6.7108 | CRE Workflow (Gemini AI + DeFiLlama) | NO
+-- 009 | Aave V3 | 0.0001 | CRE Workflow (Gemini AI + DeFiLlama) | NO
+```
 
 ---
 
@@ -226,8 +328,9 @@ sequenceDiagram
 | **DeFiLlama Yields** | Live APY data for 18,000+ pools | `https://yields.llama.fi/pools` |
 | **World ID Cloud** | Human verification | `https://developer.worldcoin.org/api/v2/verify/` |
 | **Gemini AI** | Yield predictions | Lovable AI Gateway |
+| **Ethereum RPC** | Blockchain data for CRE | `https://ethereum-rpc.publicnode.com` |
 
-### Data Code Files
+### 📊 Data Code Files
 
 | File | Purpose |
 |------|---------|
@@ -263,6 +366,7 @@ src/
 │   ├── Index.tsx                 # Markets homepage
 │   ├── MarketDetail.tsx          # Trading + AI prediction page
 │   ├── Portfolio.tsx             # User portfolio
+│   ├── CREWorkflow.tsx           # ⚡ CRE — Workflow dashboard
 │   └── NotFound.tsx              # 404 page
 └── lib/
     └── mockData.ts               # Market type definitions
@@ -272,7 +376,18 @@ supabase/functions/
 ├── worldid-rp-context/index.ts   # 🌐 World ID — RP context generator
 ├── predict-yield/index.ts        # 🤖 AI — Single market AI prediction
 ├── batch-predict/index.ts        # 🤖 AI — Batch AI predictions
-└── fetch-yields/index.ts         # 📊 Data — DeFiLlama data fetcher
+├── fetch-yields/index.ts         # 📊 Data — DeFiLlama data fetcher
+└── cre-workflow-simulate/index.ts # ⚡ CRE — Live workflow simulation
+
+cre-workflow/
+├── project.yaml                   # ⚡ CRE — Project configuration
+└── destaker-settlement/
+    ├── workflow.yaml              # ⚡ CRE — Workflow config
+    ├── main.ts                    # ⚡ CRE — Main entry point
+    ├── defillama.ts               # ⚡ CRE — DeFiLlama integration
+    ├── gemini.ts                  # ⚡ CRE — Gemini AI settlement
+    ├── types.ts                   # ⚡ CRE — Shared types
+    └── config.staging.json        # ⚡ CRE — Staging configuration
 ```
 
 ---
@@ -309,11 +424,7 @@ Upserted 1859 pools ✅
 
 **3. World ID Cloud Verification** — Backend correctly validates proofs:
 ```json
-// Valid proof → 200 OK
 { "verified": true, "nullifier_hash": "0x...", "verification_level": "device" }
-
-// Invalid proof → 400 Bad Request  
-{ "verified": false, "error": "validation_error", "detail": "Invalid nullifier_hash" }
 ```
 
 **4. RP Context Generation** — Generates signed contexts for IDKit v4:
@@ -321,11 +432,21 @@ Upserted 1859 pools ✅
 {
   "rp_context": {
     "rp_id": "rp_destaker_demo",
-    "nonce": "4163e7a8-7fe2-40e3-b457-e19dd2eacb53",
-    "created_at": 1771768247,
-    "expires_at": 1771771847,
-    "signature": "fe50a6a165d38e73c3d7284a0413c81f..."
+    "nonce": "f62de832-7b36-4329-b2ac-165ea07d299a",
+    "created_at": 1771769522,
+    "expires_at": 1771773122,
+    "signature": "e6758133236ffa098404c030703f70cf816a85457ebf85b529e11d3d42db695a"
   }
+}
+```
+
+**5. CRE Workflow Simulation** — Full orchestration with real blockchain + API + AI:
+```json
+{
+  "execution": { "status": "success", "steps_completed": 5, "total_duration_ms": 1457 },
+  "blockchain": { "block_number": 24512926, "chain_id": "1" },
+  "external_api": { "source": "DeFiLlama", "total_pools": 18063 },
+  "ai_agent": { "model": "google/gemini-2.5-flash-lite", "markets_settled": 3 }
 }
 ```
 
@@ -340,6 +461,26 @@ Upserted 1859 pools ✅
 - ✅ Trading panel gates behind wallet connection + World ID verification
 - ✅ AI Prediction Panel shows confidence, reasoning, risk factors
 - ✅ Batch prediction runs all 12 markets in parallel
+- ✅ CRE Workflow dashboard runs live simulation with real data
+- ✅ CRE results show blockchain block, DeFiLlama pools, AI settlements
+
+### 📸 Product Screenshots
+
+**Homepage — 12 Live Markets with AI-Driven YES/NO Prices:**
+
+The homepage displays all prediction markets with real-time pricing derived from Gemini AI analysis of DeFiLlama yield data. Each market shows YES/NO prices, time remaining, and live data indicators.
+
+**Connect Wallet + World ID Verification Modal:**
+
+Two-step authentication flow: Connect wallet (MetaMask/WalletConnect) → Verify humanity with World ID. Ensures Sybil-resistant trading.
+
+**Market Detail — Trading Panel with AI Predictions:**
+
+Individual market page showing YES/NO pricing, volume, liquidity, current yield (live from DeFiLlama), threshold, and AI prediction panel with confidence scores.
+
+**CRE Workflow Dashboard — Live Simulation Results:**
+
+Full CRE orchestration dashboard showing: Workflow Architecture (5 steps), Execution Timeline with durations, AI Settlement Results with real yield data.
 
 ---
 
@@ -357,145 +498,6 @@ Upserted 1859 pools ✅
 | Backend | Edge Functions (Deno) |
 | Database | PostgreSQL with RLS policies |
 | Deployment | Lovable Cloud |
-
----
-
-## ⚡ CRE Workflow — Live Implementation
-
-### Overview
-
-Destaker includes a **fully functional CRE Workflow** that serves as an orchestration layer for yield prediction market settlement. The workflow integrates:
-
-1. **Blockchain** — Ethereum Mainnet (reads block number, chain ID via JSON-RPC)
-2. **External API** — DeFiLlama (fetches 18,000+ DeFi yield pools)
-3. **AI Agent** — Gemini 2.5 Flash Lite (determines settlement outcomes)
-4. **Data Write** — Stores settlement reports (simulating on-chain `SimpleMarket.settleMarket()`)
-
-### CRE Workflow Files
-
-| File | Label | Purpose |
-|------|-------|---------|
-| `cre-workflow/project.yaml` | ⚡ **CRE** | CRE project configuration (RPCs, targets) |
-| `cre-workflow/destaker-settlement/workflow.yaml` | ⚡ **CRE** | Workflow-specific config |
-| `cre-workflow/destaker-settlement/main.ts` | ⚡ **CRE** | Main workflow entry point (CRE SDK pattern) |
-| `cre-workflow/destaker-settlement/defillama.ts` | ⚡ **CRE** | DeFiLlama API integration module |
-| `cre-workflow/destaker-settlement/gemini.ts` | ⚡ **CRE** | Gemini AI settlement logic |
-| `cre-workflow/destaker-settlement/types.ts` | ⚡ **CRE** | Shared type definitions |
-| `cre-workflow/destaker-settlement/config.staging.json` | ⚡ **CRE** | Staging configuration (12 markets) |
-| `supabase/functions/cre-workflow-simulate/index.ts` | ⚡ **CRE** | Live simulation edge function |
-| `src/pages/CREWorkflow.tsx` | ⚡ **CRE** | Frontend dashboard for running workflow |
-
-### How to Run
-
-**Option 1: CRE CLI (Local Simulation)**
-```bash
-# Install CRE CLI
-npm install -g @chainlink/cre-cli
-
-# Simulate the workflow
-cre workflow simulate destaker-settlement --target staging-settings
-```
-
-**Option 2: Live Edge Function (Deployed)**
-```bash
-# POST to the live simulation endpoint
-curl -X POST https://pgereiuwcgumeacibpee.supabase.co/functions/v1/cre-workflow-simulate
-```
-
-**Option 3: Frontend Dashboard**
-Navigate to `/cre-workflow` in the app and click "Run CRE Workflow Simulation"
-
-### Live Execution Evidence
-
-**Workflow completed successfully in 1757ms with 5 steps:**
-
-```json
-{
-  "workflow": {
-    "name": "destaker-settlement",
-    "execution_id": "d5dc8f04-3b3f-406e-ad44-fa6bf08df023",
-    "trigger_type": "cron",
-    "cre_version": "TypeScript SDK"
-  },
-  "execution": {
-    "timestamp": "2026-02-22T14:03:10.852Z",
-    "total_duration_ms": 693,
-    "status": "success",
-    "steps_completed": 5
-  },
-  "blockchain": {
-    "chain": "ethereum-mainnet",
-    "chain_id": "1",
-    "block_number": 24512882,
-    "rpc": "https://ethereum-rpc.publicnode.com"
-  },
-  "external_api": {
-    "source": "DeFiLlama",
-    "url": "https://yields.llama.fi/pools",
-    "total_pools": 18063
-  },
-  "ai_agent": {
-    "model": "google/gemini-2.5-flash-lite",
-    "markets_settled": 3
-  }
-}
-```
-
-**Step-by-step execution:**
-
-| Step | Name | Type | Duration | Status | Key Data |
-|------|------|------|----------|--------|----------|
-| 1 | Cron Trigger | trigger | 0ms | ✅ | Schedule: `0 */30 * * * *` |
-| 2 | Blockchain Read | blockchain_read | 513ms | ✅ | ETH Block #24,512,891, Chain ID: 1 |
-| 3 | External API (DeFiLlama) | external_api | 404ms | ✅ | 18,063 pools, 3 markets matched |
-| 4 | AI Agent (Gemini) | ai_agent | 61ms | ✅ | 3 markets settled with AI |
-| 5 | Data Write | data_write | 777ms | ✅ | 3 records stored |
-
-**Real yield data fetched:**
-
-| Asset | Current APY | 30d Mean | TVL | Project | Chain |
-|-------|-------------|----------|-----|---------|-------|
-| stETH | 2.3020% | 2.4636% | $18.68B | Lido | Ethereum |
-| mSOL | 6.7108% | 6.1387% | $0.25B | Marinade | Solana |
-| Aave V3 | 0.0001% | 0.0001% | $4.58B | Aave V3 | Ethereum |
-
-**AI Settlement Results:**
-
-| Asset | APY | Threshold | Outcome | Confidence |
-|-------|-----|-----------|---------|------------|
-| stETH | 2.302% | 3.5% | **NO** | 90% |
-| mSOL | 6.7108% | 7.0% | **NO** | 90% |
-| Aave V3 | 0.0001% | 5.0% | **NO** | 90% |
-
-**Database records created:**
-```sql
-SELECT market_id, asset, final_apy, resolution_source, resolution_data->>'outcome' 
-FROM market_resolutions;
--- 001 | stETH   | 2.302  | CRE Workflow (Gemini AI + DeFiLlama) | NO
--- 004 | mSOL    | 6.7108 | CRE Workflow (Gemini AI + DeFiLlama) | NO
--- 009 | Aave V3 | 0.0001 | CRE Workflow (Gemini AI + DeFiLlama) | NO
-```
-
-### CRE Workflow Architecture
-
-```mermaid
-sequenceDiagram
-    participant CT as ⏰ Cron Trigger
-    participant BC as 🔗 Ethereum RPC
-    participant DL as 🌐 DeFiLlama API
-    participant AI as 🤖 Gemini AI
-    participant DB as 💾 Database/Chain
-
-    CT->>CT: Trigger every 30 minutes
-    CT->>BC: eth_blockNumber, eth_chainId
-    BC-->>CT: Block #24,512,882, Chain ID: 1
-    CT->>DL: GET /pools (18,063 pools)
-    DL-->>CT: stETH: 2.30%, mSOL: 6.71%, Aave: 0.00%
-    CT->>AI: Settle markets (3 markets)
-    AI-->>CT: stETH→NO, mSOL→NO, Aave→NO
-    CT->>DB: Store 3 settlement reports
-    DB-->>CT: ✅ Complete (693ms)
-```
 
 ---
 
@@ -520,6 +522,12 @@ npm run dev
 1. Create a World ID app at [developer.worldcoin.org](https://developer.worldcoin.org)
 2. Set your App ID in `src/components/WorldIDVerify.tsx` and `supabase/functions/verify-worldid/index.ts`
 3. Configure the action name (`destaker-verify`)
+
+### CRE Workflow Setup
+
+1. Install CRE CLI: `npm install -g @chainlink/cre-cli`
+2. Run simulation: `cre workflow simulate destaker-settlement --target staging-settings`
+3. Or use the live `/cre-workflow` dashboard in the app
 
 ---
 
