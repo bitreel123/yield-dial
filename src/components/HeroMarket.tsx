@@ -235,7 +235,7 @@ export const HeroMarket = ({ market }: HeroMarketProps) => {
           <div className="flex items-center gap-3">
             <span className="text-lg">{market.assetIcon}</span>
             <h2 className="text-sm font-semibold text-foreground">
-              {market.asset} Yield Prediction
+              {market.asset} Yield Prediction APR {market.currentYield}% at Epoch End
             </h2>
             <Flame className="h-3.5 w-3.5 text-warning" />
           </div>
@@ -285,30 +285,6 @@ export const HeroMarket = ({ market }: HeroMarketProps) => {
               </div>
             </div>
 
-            {/* Options rows with live ticking prices */}
-            <div className="mb-5 space-y-2">
-              <div className="flex items-center justify-between rounded-lg bg-secondary/50 px-4 py-2.5">
-                <div className="flex items-center gap-3">
-                  <span className="text-base">{market.assetIcon}</span>
-                  <span className="text-xs font-medium text-foreground">{market.asset}</span>
-                  <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
-                    Current: {market.currentYield.toFixed(2)}%
-                  </span>
-                </div>
-                <TickerNumber value={liveYesPrice} className="rounded-md bg-chart-yes/15 px-3 py-1 text-xs font-bold font-mono text-chart-yes" />
-              </div>
-
-              <div className="flex items-center justify-between rounded-lg bg-secondary/50 px-4 py-2.5">
-                <div className="flex items-center gap-3">
-                  <span className="text-base">✕</span>
-                  <span className="text-xs font-medium text-foreground">Below Threshold</span>
-                  <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
-                    &lt;{market.threshold}%
-                  </span>
-                </div>
-                <TickerNumber value={liveNoPrice} className="rounded-md bg-chart-no/15 px-3 py-1 text-xs font-bold font-mono text-chart-no" />
-              </div>
-            </div>
 
             {/* Volume - live ticking */}
             <div className="mb-4 text-xs text-muted-foreground">
