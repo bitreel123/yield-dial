@@ -1,8 +1,9 @@
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { BarChart3, Wallet, Vote, Menu, X } from "lucide-react";
+import { BarChart3, Wallet, Menu, X } from "lucide-react";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { UserMenu } from "@/components/UserMenu";
+import { ConnectWalletModal } from "@/components/ConnectWalletModal";
 
 const navItems = [
   { path: "/", label: "Markets", icon: BarChart3 },
@@ -48,9 +49,9 @@ export const Navbar = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button size="sm" className="hidden text-xs md:flex">
-            Connect Wallet
-          </Button>
+          <div className="hidden md:flex">
+            <UserMenu />
+          </div>
           <button
             className="md:hidden text-muted-foreground"
             onClick={() => setMobileOpen(!mobileOpen)}
@@ -81,11 +82,13 @@ export const Navbar = () => {
               {item.label}
             </Link>
           ))}
-          <Button size="sm" className="mt-2 w-full text-xs">
-            Connect Wallet
-          </Button>
+          <div className="mt-2">
+            <UserMenu />
+          </div>
         </motion.div>
       )}
+
+      <ConnectWalletModal />
     </nav>
   );
 };
