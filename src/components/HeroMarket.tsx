@@ -271,6 +271,17 @@ export const HeroMarket = ({ market }: HeroMarketProps) => {
                   ${liveYesPrice}
                 </motion.span>
                 <span className="text-xs text-chart-yes font-medium">YES</span>
+                <span className="mx-2 text-muted-foreground/40">|</span>
+                <motion.span
+                  key={liveNoPrice}
+                  initial={{ y: priceFlash === "down" ? 4 : -4, opacity: 0.6 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                  className="text-2xl font-bold font-mono text-chart-no"
+                >
+                  ${liveNoPrice}
+                </motion.span>
+                <span className="text-xs text-chart-no font-medium">NO</span>
               </div>
             </div>
 
@@ -486,6 +497,10 @@ export const HeroMarket = ({ market }: HeroMarketProps) => {
               <div>
                 <div className="text-[10px] text-chart-yes font-medium">{market.asset}</div>
                 <TickerNumber value={liveYesPrice} className="text-lg font-bold font-mono text-chart-yes" />
+              </div>
+              <div className="mt-1">
+                <div className="text-[10px] text-chart-no font-medium">Below</div>
+                <TickerNumber value={liveNoPrice} className="text-lg font-bold font-mono text-chart-no" />
               </div>
             </div>
 
