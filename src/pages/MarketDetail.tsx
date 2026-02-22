@@ -6,6 +6,8 @@ import { ArrowLeft, Clock, TrendingUp, Shield, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { AIPredictionPanel } from "@/components/AIPredictionPanel";
+import { useYieldPools, getYieldForAsset } from "@/hooks/useYieldPools";
 
 const MarketDetail = () => {
   const { id } = useParams();
@@ -14,6 +16,13 @@ const MarketDetail = () => {
   const [side, setSide] = useState<'YES' | 'NO'>('YES');
   const [amount, setAmount] = useState('');
   const { walletAddress, isVerified, setModalOpen } = useAuth();
+  const { pools } = useYieldPools();
+
+  // Enrich with real yield
+  const realYield = market ? getYieldForAsset(pools, market.asset) : null;
+  const enrichedMarket = market && realYield !== null
+    ? { ...market, currentYield: Math.round(realYield * 100) / 100 }
+    : market;
 
   if (!market) {
     return (
@@ -80,11 +89,19 @@ const MarketDetail = () => {
           </motion.div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <StatCard label="24h Volume" value={`$${(market.volume24h / 1000).toFixed(0)}k`} />
-            <StatCard label="Liquidity" value={`$${(market.totalLiquidity / 1000).toFixed(0)}k`} />
-            <StatCard label="Current Yield" value={`${market.currentYield}%`} />
-            <StatCard label="Threshold" value={`${market.threshold}%`} />
+            <StatCard label="24h Volume" value={`$${(enrichedMarket!.volume24h / 1000).toFixed(0)}k`} />
+            <StatCard label="Liquidity" value={`$${(enrichedMarket!.totalLiquidity / 1000).toFixed(0)}k`} />
+            <StatCard label="Current Yield" value={`${enrichedMarket!.currentYield}%`} />
+            <StatCard label="Threshold" value={`${enrichedMarket!.threshold}%`} />
           </div>
+
+          {/* AI Prediction Panel */}
+          <AIPredictionPanel
+            marketId={enrichedMarket!.id}
+            asset={enrichedMarket!.asset}
+            threshold={enrichedMarket!.threshold}
+            settlementDate={enrichedMarket!.settlementDate}
+          />
 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="glass-card p-5">
             <h3 className="text-sm font-semibold text-foreground mb-3">Market Details</h3>

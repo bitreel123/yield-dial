@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      market_resolutions: {
+        Row: {
+          asset: string
+          created_at: string
+          final_apy: number | null
+          id: string
+          market_id: string
+          resolution_data: Json | null
+          resolution_source: string | null
+          resolution_timestamp: string | null
+          resolved: boolean
+          threshold: number
+          updated_at: string
+        }
+        Insert: {
+          asset: string
+          created_at?: string
+          final_apy?: number | null
+          id?: string
+          market_id: string
+          resolution_data?: Json | null
+          resolution_source?: string | null
+          resolution_timestamp?: string | null
+          resolved?: boolean
+          threshold: number
+          updated_at?: string
+        }
+        Update: {
+          asset?: string
+          created_at?: string
+          final_apy?: number | null
+          id?: string
+          market_id?: string
+          resolution_data?: Json | null
+          resolution_source?: string | null
+          resolution_timestamp?: string | null
+          resolved?: boolean
+          threshold?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       yield_pools: {
         Row: {
           apy: number | null
@@ -68,6 +110,57 @@ export type Database = {
           symbol?: string
           tvl_usd?: number | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      yield_predictions: {
+        Row: {
+          asset: string
+          confidence: number
+          created_at: string
+          current_apy: number
+          data_sources: Json
+          id: string
+          market_id: string
+          model_used: string
+          predicted_apy: number
+          prediction_direction: string
+          probability_above_threshold: number
+          reasoning: string
+          settlement_date: string | null
+          threshold: number
+        }
+        Insert: {
+          asset: string
+          confidence: number
+          created_at?: string
+          current_apy: number
+          data_sources?: Json
+          id?: string
+          market_id: string
+          model_used: string
+          predicted_apy: number
+          prediction_direction: string
+          probability_above_threshold: number
+          reasoning: string
+          settlement_date?: string | null
+          threshold: number
+        }
+        Update: {
+          asset?: string
+          confidence?: number
+          created_at?: string
+          current_apy?: number
+          data_sources?: Json
+          id?: string
+          market_id?: string
+          model_used?: string
+          predicted_apy?: number
+          prediction_direction?: string
+          probability_above_threshold?: number
+          reasoning?: string
+          settlement_date?: string | null
+          threshold?: number
         }
         Relationships: []
       }
