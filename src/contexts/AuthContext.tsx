@@ -1,57 +1,78 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { useAccount, useConnect, useDisconnect } from "wagmi";
 
 interface AuthState {
-  walletAddress: string | null;
   isVerified: boolean;
   verificationLevel: "orb" | "device" | null;
   nullifierHash: string | null;
 }
 
 interface AuthContextType extends AuthState {
-  connectWallet: () => void;
+  walletAddress: string | undefined;
+  isConnected: boolean;
+  connectWallet: (connectorIndex?: number) => void;
   disconnectWallet: () => void;
   setVerified: (proof: { level: "orb" | "device"; nullifierHash: string }) => void;
   isModalOpen: boolean;
   setModalOpen: (open: boolean) => void;
+  connectors: ReturnType<typeof useConnect>["connectors"];
+  connectAsync: ReturnType<typeof useConnect>["connectAsync"];
+  isPending: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const generateAddress = () => {
-  const hex = "0123456789abcdef";
-  let addr = "0x";
-  for (let i = 0; i < 40; i++) addr += hex[Math.floor(Math.random() * 16)];
-  return addr;
-};
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [state, setState] = useState<AuthState>({
-    walletAddress: null,
+  const { address, isConnected } = useAccount();
+  const { connectors, connectAsync, isPending } = useConnect();
+  const { disconnect } = useDisconnect();
+
+  const [authState, setAuthState] = useState<AuthState>({
     isVerified: false,
     verificationLevel: null,
     nullifierHash: null,
   });
   const [isModalOpen, setModalOpen] = useState(false);
 
-  const connectWallet = useCallback(() => {
-    setState((s) => ({ ...s, walletAddress: generateAddress() }));
-  }, []);
+  const connectWallet = useCallback(
+    (connectorIndex = 0) => {
+      const connector = connectors[connectorIndex];
+      if (connector) {
+        connectAsync({ connector });
+      }
+    },
+    [connectors, connectAsync]
+  );
 
   const disconnectWallet = useCallback(() => {
-    setState({ walletAddress: null, isVerified: false, verificationLevel: null, nullifierHash: null });
-  }, []);
+    disconnect();
+    setAuthState({ isVerified: false, verificationLevel: null, nullifierHash: null });
+  }, [disconnect]);
 
   const setVerified = useCallback((proof: { level: "orb" | "device"; nullifierHash: string }) => {
-    setState((s) => ({
-      ...s,
+    setAuthState({
       isVerified: true,
       verificationLevel: proof.level,
       nullifierHash: proof.nullifierHash,
-    }));
+    });
   }, []);
 
   return (
-    <AuthContext.Provider value={{ ...state, connectWallet, disconnectWallet, setVerified, isModalOpen, setModalOpen }}>
+    <AuthContext.Provider
+      value={{
+        walletAddress: address,
+        isConnected,
+        ...authState,
+        connectWallet,
+        disconnectWallet,
+        setVerified,
+        isModalOpen,
+        setModalOpen,
+        connectors,
+        connectAsync,
+        isPending,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
