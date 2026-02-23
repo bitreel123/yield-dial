@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { BarChart3, Wallet, Menu, X, Zap } from "lucide-react";
+import { BarChart3, Wallet, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { UserMenu } from "@/components/UserMenu";
 import { ConnectWalletModal } from "@/components/ConnectWalletModal";
@@ -8,7 +8,6 @@ import { ConnectWalletModal } from "@/components/ConnectWalletModal";
 const navItems = [
   { path: "/", label: "Markets", icon: BarChart3 },
   { path: "/portfolio", label: "Portfolio", icon: Wallet },
-  { path: "/cre-workflow", label: "CRE Workflow", icon: Zap },
 ];
 
 export const Navbar = () => {

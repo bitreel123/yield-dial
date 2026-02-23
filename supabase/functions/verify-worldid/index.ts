@@ -8,7 +8,7 @@ const APP_ID = "app_135f61bfd908558b3c07fd6580d58192";
 
 /**
  * Cloud verification endpoint for World ID proofs.
- * Calls the World ID Developer Portal API to verify proofs server-side.
+ * Uses the official /api/v2/verify/{app_id} endpoint.
  * See: https://docs.world.org/world-id/id/cloud
  */
 Deno.serve(async (req) => {
@@ -17,65 +17,69 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { proof, merkle_root, nullifier_hash, verification_level, action, signal } =
-      await req.json();
+    const body = await req.json();
+    const { proof, merkle_root, nullifier_hash, verification_level, action, signal } = body;
 
     if (!proof || !merkle_root || !nullifier_hash) {
       return new Response(
-        JSON.stringify({ error: "Missing required proof fields" }),
+        JSON.stringify({ verified: false, error: "missing_fields", detail: "Missing required proof fields (proof, merkle_root, nullifier_hash)" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Call World ID cloud verification API
+    // Call the World ID Developer Portal verify API
     const verifyUrl = `https://developer.worldcoin.org/api/v2/verify/${APP_ID}`;
 
-    console.log(`Verifying World ID proof (${verification_level}) via cloud API...`);
+    console.log(`[WorldID] Verifying proof (level: ${verification_level || "device"}, action: ${action || "destaker-verify"})`);
 
     const verifyRes = await fetch(verifyUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        merkle_root,
         nullifier_hash,
+        merkle_root,
         proof,
         verification_level: verification_level || "device",
         action: action || "destaker-verify",
-        signal: signal || "",
+        signal_hash: signal
+          ? "0x" + Array.from(new TextEncoder().encode(signal)).map(b => b.toString(16).padStart(2, "0")).join("")
+          : "0x0000000000000000000000000000000000000000000000000000000000000000",
       }),
     });
 
     const verifyData = await verifyRes.json();
 
     if (!verifyRes.ok) {
-      console.error("World ID verification failed:", verifyData);
+      console.error("[WorldID] Verification failed:", JSON.stringify(verifyData));
       return new Response(
         JSON.stringify({
           verified: false,
           error: verifyData.code || "verification_failed",
-          detail: verifyData.detail || "Proof verification failed",
+          detail: verifyData.detail || "The proof could not be verified by the World ID API",
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("World ID verification successful:", verifyData);
+    console.log("[WorldID] Verification SUCCESS:", JSON.stringify(verifyData));
 
     return new Response(
       JSON.stringify({
         verified: true,
-        nullifier_hash,
+        nullifier_hash: verifyData.nullifier_hash || nullifier_hash,
         verification_level: verification_level || "device",
         action: action || "destaker-verify",
+        created_at: verifyData.created_at,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Verification error:", error);
+    console.error("[WorldID] Error:", error);
     return new Response(
       JSON.stringify({
         verified: false,
         error: error instanceof Error ? error.message : "Unknown error",
+        detail: "An unexpected error occurred during verification",
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
