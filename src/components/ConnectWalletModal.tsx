@@ -2,20 +2,35 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { WorldIDVerify } from "@/components/WorldIDVerify";
-import { Wallet, CheckCircle2, Copy, LogOut } from "lucide-react";
-import { useState } from "react";
+import { Wallet, CheckCircle2, Copy, LogOut, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const ConnectWalletModal = () => {
-  const { walletAddress, isVerified, connectWallet, disconnectWallet, isModalOpen, setModalOpen } = useAuth();
-  const [connecting, setConnecting] = useState(false);
+  const {
+    walletAddress,
+    isConnected,
+    isVerified,
+    disconnectWallet,
+    isModalOpen,
+    setModalOpen,
+    connectors,
+    connectAsync,
+    isPending,
+  } = useAuth();
 
-  const handleConnect = async () => {
-    setConnecting(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    connectWallet();
-    setConnecting(false);
-    toast.success("Wallet connected");
+  const handleConnect = async (connectorIndex: number) => {
+    try {
+      const connector = connectors[connectorIndex];
+      if (connector) {
+        await connectAsync({ connector });
+        toast.success(`Connected via ${connector.name}`);
+      }
+    } catch (err: any) {
+      console.error("Wallet connection error:", err);
+      if (err?.code !== 4001) {
+        toast.error(err.shortMessage || err.message || "Failed to connect wallet");
+      }
+    }
   };
 
   const handleCopy = () => {
@@ -38,21 +53,31 @@ export const ConnectWalletModal = () => {
       <DialogContent className="glass-card border-border/50 sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-foreground">
-            {walletAddress ? "Your Account" : "Connect Wallet"}
+            {isConnected ? "Your Account" : "Connect Wallet"}
           </DialogTitle>
         </DialogHeader>
 
-        {!walletAddress ? (
+        {!isConnected ? (
           <div className="space-y-3 py-2">
-            <p className="text-xs text-muted-foreground">Connect your wallet to trade on prediction markets.</p>
-            <Button onClick={handleConnect} disabled={connecting} className="w-full gap-2">
-              <Wallet className="h-4 w-4" />
-              {connecting ? "Connecting..." : "Connect MetaMask"}
-            </Button>
-            <Button variant="outline" onClick={handleConnect} disabled={connecting} className="w-full gap-2">
-              <Wallet className="h-4 w-4" />
-              {connecting ? "Connecting..." : "Connect WalletConnect"}
-            </Button>
+            <p className="text-xs text-muted-foreground">
+              Connect your wallet to trade on prediction markets.
+            </p>
+            {connectors.map((connector, index) => (
+              <Button
+                key={connector.uid}
+                onClick={() => handleConnect(index)}
+                disabled={isPending}
+                variant={index === 0 ? "default" : "outline"}
+                className="w-full gap-2"
+              >
+                {isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Wallet className="h-4 w-4" />
+                )}
+                {isPending ? "Connecting..." : `Connect ${connector.name}`}
+              </Button>
+            ))}
           </div>
         ) : (
           <div className="space-y-4 py-2">

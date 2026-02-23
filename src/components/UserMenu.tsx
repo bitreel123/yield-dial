@@ -3,9 +3,9 @@ import { CheckCircle2, Wallet, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const UserMenu = () => {
-  const { walletAddress, isVerified, setModalOpen } = useAuth();
+  const { walletAddress, isConnected, isVerified, setModalOpen } = useAuth();
 
-  if (!walletAddress) {
+  if (!isConnected) {
     return (
       <Button size="sm" className="text-xs" onClick={() => setModalOpen(true)}>
         Connect Wallet
@@ -13,7 +13,7 @@ export const UserMenu = () => {
     );
   }
 
-  const truncated = `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
+  const truncated = walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "";
 
   return (
     <button

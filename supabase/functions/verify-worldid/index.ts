@@ -8,8 +8,8 @@ const APP_ID = "app_135f61bfd908558b3c07fd6580d58192";
 
 /**
  * Cloud verification endpoint for World ID proofs.
- * Uses the official /api/v2/verify/{app_id} endpoint.
- * See: https://docs.world.org/world-id/id/cloud
+ * Uses the official /api/v2/verify/{app_id} endpoint per:
+ * https://docs.world.org/world-id/id/cloud
  */
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -18,11 +18,11 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { proof, merkle_root, nullifier_hash, verification_level, action, signal } = body;
+    const { proof, merkle_root, nullifier_hash, verification_level, action, signal_hash } = body;
 
     if (!proof || !merkle_root || !nullifier_hash) {
       return new Response(
-        JSON.stringify({ verified: false, error: "missing_fields", detail: "Missing required proof fields (proof, merkle_root, nullifier_hash)" }),
+        JSON.stringify({ verified: false, error: "missing_fields", detail: "Missing required proof fields" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -32,19 +32,23 @@ Deno.serve(async (req) => {
 
     console.log(`[WorldID] Verifying proof (level: ${verification_level || "device"}, action: ${action || "destaker-verify"})`);
 
+    const verifyPayload: Record<string, string> = {
+      nullifier_hash,
+      merkle_root,
+      proof,
+      verification_level: verification_level || "device",
+      action: action || "destaker-verify",
+    };
+
+    // Only include signal_hash if provided
+    if (signal_hash) {
+      verifyPayload.signal_hash = signal_hash;
+    }
+
     const verifyRes = await fetch(verifyUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        nullifier_hash,
-        merkle_root,
-        proof,
-        verification_level: verification_level || "device",
-        action: action || "destaker-verify",
-        signal_hash: signal
-          ? "0x" + Array.from(new TextEncoder().encode(signal)).map(b => b.toString(16).padStart(2, "0")).join("")
-          : "0x0000000000000000000000000000000000000000000000000000000000000000",
-      }),
+      body: JSON.stringify(verifyPayload),
     });
 
     const verifyData = await verifyRes.json();
