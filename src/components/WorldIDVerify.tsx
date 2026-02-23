@@ -16,13 +16,12 @@ const ACTION = "destaker-verify";
 
 export const WorldIDVerify = () => {
   const { isVerified, verificationLevel, setVerified } = useAuth();
-  const [widgetOpen, setWidgetOpen] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [rpContext, setRpContext] = useState<any>(null);
+  const [widgetOpen, setWidgetOpen] = useState(false);
 
   const openWidget = useCallback(async () => {
     try {
-      // Get RP context from our backend
       const { data, error } = await supabase.functions.invoke("worldid-rp-context");
       if (error) throw error;
       setRpContext(data.rp_context);
@@ -38,7 +37,6 @@ export const WorldIDVerify = () => {
       setWidgetOpen(false);
       setVerifying(true);
       try {
-        // Handle both v3 and v4 response formats
         const response = result.responses?.[0];
         if (!response) throw new Error("No response in IDKit result");
 
@@ -48,22 +46,18 @@ export const WorldIDVerify = () => {
         let verification_level = "device";
 
         if ("merkle_root" in response) {
-          // V3 response
           const v3 = response as any;
           proof = v3.proof;
           merkle_root = v3.merkle_root;
           nullifier_hash = v3.nullifier;
-          verification_level = v3.identifier === "orb" ? "orb" : "device";
+          verification_level = v3.credential_type === "orb" ? "orb" : "device";
         } else {
-          // V4 response
           const v4 = response as any;
           proof = Array.isArray(v4.proof) ? v4.proof[0] : v4.proof;
           merkle_root = Array.isArray(v4.proof) ? v4.proof[4] : "";
           nullifier_hash = v4.nullifier;
-          verification_level = v4.issuer_schema_id === 1 ? "orb" : "device";
         }
 
-        // Send to our backend for cloud verification
         const { data, error } = await supabase.functions.invoke("verify-worldid", {
           body: {
             proof,
@@ -75,27 +69,20 @@ export const WorldIDVerify = () => {
           },
         });
 
-        if (error) throw error;
+        if (error) throw new Error(error.message || "Verification request failed");
 
-        if (data.verified) {
+        if (data?.verified) {
           setVerified({
             level: verification_level === "orb" ? "orb" : "device",
             nullifierHash: nullifier_hash,
           });
           toast.success("World ID verification successful!");
         } else {
-          toast.error(`Verification failed: ${data.error || "Unknown error"}`);
+          toast.error(`Verification failed: ${data?.detail || data?.error || "Unknown error"}`);
         }
       } catch (err: any) {
         console.error("Cloud verification error:", err);
-        // Fallback
-        const response = result.responses?.[0];
-        const nullifier = (response as any)?.nullifier || crypto.randomUUID();
-        setVerified({
-          level: "device",
-          nullifierHash: nullifier,
-        });
-        toast.success("Verified (client-side fallback)");
+        toast.error(err.message || "Verification failed");
       } finally {
         setVerifying(false);
       }
@@ -105,7 +92,7 @@ export const WorldIDVerify = () => {
 
   const handleError = useCallback((errorCode: IDKitErrorCodes) => {
     console.error("World ID error:", errorCode);
-    toast.error("World ID verification cancelled or failed");
+    toast.error("World ID verification was cancelled or failed.");
     setWidgetOpen(false);
   }, []);
 
@@ -116,7 +103,7 @@ export const WorldIDVerify = () => {
         <div>
           <p className="text-sm font-semibold text-foreground">Verified Human</p>
           <p className="text-[10px] text-muted-foreground">
-            World ID · {verificationLevel === "orb" ? "Orb" : "Device"} verified · Cloud + On-Chain ready
+            World ID · {verificationLevel === "orb" ? "Orb" : "Device"} verified
           </p>
         </div>
       </div>

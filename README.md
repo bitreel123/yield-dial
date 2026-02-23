@@ -104,7 +104,7 @@ Destaker solves these problems through:
 ┌──────────────────────────────────────────────────────┐
 │                      PAGES                            │
 │  Index (Markets) ──► MarketDetail (Trading)           │
-│  Portfolio ──► CREWorkflow (Dashboard)                │
+│  Portfolio                                             │
 └──────────┬───────────────────────────────────────────┘
            │
            ▼
@@ -233,8 +233,7 @@ Step 1          Step 2              Step 3              Step 4           Step 5
 | `cre-workflow/destaker-settlement/gemini.ts` | ⚡ **CRE** | Gemini AI settlement logic |
 | `cre-workflow/destaker-settlement/types.ts` | ⚡ **CRE** | Shared type definitions |
 | `cre-workflow/destaker-settlement/config.staging.json` | ⚡ **CRE** | Staging config (12 markets) |
-| `supabase/functions/cre-workflow-simulate/index.ts` | ⚡ **CRE** | Live simulation edge function |
-| `src/pages/CREWorkflow.tsx` | ⚡ **CRE** | Frontend dashboard for running workflow |
+| `supabase/functions/cre-workflow-simulate/index.ts` | ⚡ **CRE** | Live simulation edge function (backend only) |
 
 ### How to Run
 
@@ -244,13 +243,12 @@ npm install -g @chainlink/cre-cli
 cre workflow simulate destaker-settlement --target staging-settings
 ```
 
-**Option 2: Live Edge Function (Deployed)**
+**Option 2: Live Edge Function (Backend — Deployed)**
 ```bash
 curl -X POST https://pgereiuwcgumeacibpee.supabase.co/functions/v1/cre-workflow-simulate
 ```
 
-**Option 3: Frontend Dashboard**
-Navigate to `/cre-workflow` in the app and click "Run CRE Workflow Simulation"
+> **Note**: The CRE Workflow runs entirely on the backend. There is no frontend UI for it — all orchestration happens server-side via edge functions.
 
 ### ✅ Live CRE Execution Evidence
 
@@ -366,7 +364,6 @@ src/
 │   ├── Index.tsx                 # Markets homepage
 │   ├── MarketDetail.tsx          # Trading + AI prediction page
 │   ├── Portfolio.tsx             # User portfolio
-│   ├── CREWorkflow.tsx           # ⚡ CRE — Workflow dashboard
 │   └── NotFound.tsx              # 404 page
 └── lib/
     └── mockData.ts               # Market type definitions
@@ -461,8 +458,6 @@ Upserted 1859 pools ✅
 - ✅ Trading panel gates behind wallet connection + World ID verification
 - ✅ AI Prediction Panel shows confidence, reasoning, risk factors
 - ✅ Batch prediction runs all 12 markets in parallel
-- ✅ CRE Workflow dashboard runs live simulation with real data
-- ✅ CRE results show blockchain block, DeFiLlama pools, AI settlements
 
 ### 📸 Product Screenshots
 
@@ -477,10 +472,6 @@ Two-step authentication flow: Connect wallet (MetaMask/WalletConnect) → Verify
 **Market Detail — Trading Panel with AI Predictions:**
 
 Individual market page showing YES/NO pricing, volume, liquidity, current yield (live from DeFiLlama), threshold, and AI prediction panel with confidence scores.
-
-**CRE Workflow Dashboard — Live Simulation Results:**
-
-Full CRE orchestration dashboard showing: Workflow Architecture (5 steps), Execution Timeline with durations, AI Settlement Results with real yield data.
 
 ---
 
@@ -517,6 +508,8 @@ npm install
 npm run dev
 ```
 
+> **Note**: Environment variables are managed securely via Lovable Cloud and are never committed to the repository. The `.env` file is listed in `.gitignore`.
+
 ### World ID Setup
 
 1. Create a World ID app at [developer.worldcoin.org](https://developer.worldcoin.org)
@@ -527,7 +520,7 @@ npm run dev
 
 1. Install CRE CLI: `npm install -g @chainlink/cre-cli`
 2. Run simulation: `cre workflow simulate destaker-settlement --target staging-settings`
-3. Or use the live `/cre-workflow` dashboard in the app
+3. Or call the backend edge function directly via API
 
 ---
 
