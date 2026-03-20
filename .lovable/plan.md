@@ -1,92 +1,79 @@
 
 
-# World ID Integration Plan for Destaker
+# Plan: Update README for Polkadot Hub Submission + Generate Screenshots
 
-## Overview
+## What Changed
+The project is now being submitted for a **Polkadot Hub DeFi hackathon**, not the World ID/Chainlink track. Smart contracts have been deployed on Polkadot Hub EVM:
+- **MarketRegistry**: `0x261492BF6f99899561b7E08582697fE7b0775947`
+- **BettingPool**: `0x704C6d2f06232D722e0AaEf1C1D4FcB1aB4103E1`
+- **LiquidityPool**: `0x8FD8AD0170738a2f3d24F9b71b51cDdb9609Af6D`
 
-Integrate World ID verification into Destaker to provide Sybil-resistant identity for the prediction market. Users will verify with World ID before trading, and the platform will use a "Connect Wallet + Verify Human" flow.
+## Tasks
 
-## What Will Change
+### 1. Rewrite README.md completely
+Remove all World ID, CRE/Chainlink references. New structure:
+- **Introduction**: Destaker — DeFi yield prediction market on Polkadot Hub
+- **Problem**: Lack of yield hedging tools, information asymmetry, no on-chain settlement
+- **Goals**: Decentralized yield prediction, transparent AI-driven pricing, on-chain settlement via Polkadot EVM
+- **Solution**: Prediction markets with smart contracts on Polkadot Hub + AI pricing
+- **How It Works** (ASCII chart): User → Frontend → Smart Contracts (Polkadot Hub) → DeFiLlama + AI
+- **Smart Contracts Section**: Explain each contract:
+  - `MarketRegistry` — Creates and tracks prediction markets (asset, threshold, settlement date)
+  - `BettingPool` — Handles YES/NO position bets, holds funds, distributes payouts
+  - `LiquidityPool` — Provides liquidity for market trading, LP rewards
+- **What is Polkadot Hub EVM**: Explain EVM compatibility on Polkadot, why we chose it
+- **Evidence of deployment**: Contract addresses as on-chain proof on Polkadot Hub explorer
+- **AI Prediction Engine**: Keep Gemini AI + DeFiLlama section
+- **Tech Stack**: Update to include Polkadot Hub, Solidity, remove World ID/Chainlink
+- **Repo Structure**: Update file labels, remove World ID/CRE labels, add smart contract labels
+- **Architecture diagram** (ASCII): Show smart contract integration flow
+- **Getting Started**: Clean setup instructions
 
-### 1. Install World ID SDK
-- Add `@worldcoin/idkit` package
+### 2. Take multiple screenshots for DoraHack submission
+- Homepage with markets
+- Market detail page with trading panel
+- Connect wallet modal
+- Portfolio page
+- Different market categories filtered
 
-### 2. Auth Context (`src/contexts/AuthContext.tsx`) -- NEW
-- Global React context managing:
-  - `walletAddress` (string or null) -- simulated wallet connection
-  - `isVerified` (boolean) -- World ID verified
-  - `verificationLevel` ("orb" | "device" | null)
-  - `nullifierHash` (string or null) -- unique per user
-- Functions: `connectWallet()`, `disconnectWallet()`, `setVerified()`
-
-### 3. World ID Verification Component (`src/components/WorldIDVerify.tsx`) -- NEW
-- Uses `IDKitWidget` from `@worldcoin/idkit`
-- Shows "Verify with World ID" button with World ID branding
-- On success, stores proof in AuthContext
-- Uses **Cloud verification** (off-chain) via `verifyCloudProof` -- no backend needed for demo, verification happens client-side with the IDKit widget
-- Displays verification badge after success
-
-### 4. Connect Wallet Modal (`src/components/ConnectWalletModal.tsx`) -- NEW
-- Step 1: "Connect Wallet" -- simulated wallet connection (MetaMask-style UI)
-- Step 2: "Verify Humanity" -- World ID verification via IDKit
-- Shows connected state with address + verified badge
-- Glassmorphism design matching existing UI
-
-### 5. Navbar Updates (`src/components/Navbar.tsx`)
-- Replace static "Connect Wallet" button with dynamic state:
-  - **Not connected**: "Connect Wallet" button
-  - **Connected, not verified**: Truncated address + "Verify" badge
-  - **Connected + verified**: Truncated address + green checkmark + "Human" badge
-- Clicking opens ConnectWalletModal
-
-### 6. Protected Trading Actions
-- MarketDetail.tsx: Trading panel shows "Connect Wallet" or "Verify to Trade" if not authenticated/verified
-- Portfolio.tsx: Shows empty state prompting connection if not connected
-- Trade buttons disabled with tooltip when unverified
-
-### 7. User Profile Dropdown (`src/components/UserMenu.tsx`) -- NEW
-- Dropdown from navbar showing:
-  - Wallet address (copyable)
-  - Verification status with World ID badge
-  - "Disconnect" option
+### 3. Generate product shots
+Use the product shot generator to create polished screenshots with frames for DoraHack upload.
 
 ## Technical Details
 
-### World ID Configuration
-- **App ID**: Will use a placeholder `app_staging_...` for demo (user provides real one later)
-- **Action**: `"destaker-verify"` -- unique action for this app
-- **Verification Level**: `device` (lower friction) with option for `orb`
-- **Verification**: Cloud-based (off-chain) using `verifyCloudProof`
+### Files Modified
+- `README.md` — Complete rewrite
 
-### IDKit Widget Usage
-```tsx
-import { IDKitWidget, VerificationLevel } from "@worldcoin/idkit";
+### Files NOT modified (code stays the same)
+- No frontend/backend code changes needed — this is a documentation + screenshot task only
 
-<IDKitWidget
-  app_id="app_staging_..."
-  action="destaker-verify"
-  verification_level={VerificationLevel.Device}
-  onSuccess={handleSuccess}
->
-  {({ open }) => <button onClick={open}>Verify with World ID</button>}
-</IDKitWidget>
+### Smart Contract Architecture (for README)
+```
+MarketRegistry (0x2614...)
+  ├── createMarket(asset, threshold, settlementDate)
+  ├── getMarket(marketId) → Market struct
+  └── listMarkets() → all active markets
+
+BettingPool (0x704C...)
+  ├── placeBet(marketId, side, amount)
+  ├── claimWinnings(marketId)
+  └── getPositions(user) → user's bets
+
+LiquidityPool (0x8FD8...)
+  ├── addLiquidity(marketId, amount)
+  ├── removeLiquidity(marketId, shares)
+  └── claimFees(marketId)
 ```
 
-### Files Modified
-| File | Change |
-|------|--------|
-| `src/contexts/AuthContext.tsx` | NEW - Auth state management |
-| `src/components/WorldIDVerify.tsx` | NEW - World ID widget wrapper |
-| `src/components/ConnectWalletModal.tsx` | NEW - Wallet + verification modal |
-| `src/components/UserMenu.tsx` | NEW - Profile dropdown |
-| `src/components/Navbar.tsx` | Update button to show auth state |
-| `src/pages/MarketDetail.tsx` | Gate trading behind verification |
-| `src/pages/Portfolio.tsx` | Show connect prompt if disconnected |
-| `src/App.tsx` | Wrap with AuthProvider |
-
-### World ID App Setup
-- You will need to create a World ID app at https://developer.worldcoin.org
-- For now, I will use a staging/demo app_id so the UI works
-- The IDKit widget will render and show the verification flow
-- For production, you replace the app_id with your real one
+### Flow Diagram (for README)
+```
+User → React Frontend → Polkadot Hub EVM
+                           ├── MarketRegistry (create/query markets)
+                           ├── BettingPool (YES/NO positions)
+                           └── LiquidityPool (provide liquidity)
+                        ↕
+              Backend (Edge Functions)
+                 ├── DeFiLlama API (live yield data)
+                 └── Gemini AI (prediction engine)
+```
 
